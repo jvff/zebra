@@ -6,6 +6,9 @@ use tower::{Service, ServiceExt};
 
 use crate::{constants, types::MetaAddr, AddressBook, BoxError, Request, Response};
 
+#[cfg(test)]
+mod tests;
+
 /// The `CandidateSet` manages the `PeerSet`'s peer reconnection attempts.
 ///
 /// It divides the set of all possible candidate peers into disjoint subsets,
