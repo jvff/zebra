@@ -357,6 +357,15 @@ fn validate_addrs(
         return addrs.into_iter();
     }
 
+    limit_last_seen_times(&mut addrs, last_seen_limit);
+
+    addrs.into_iter()
+}
+
+/// Ensure all reported `last_seen` times are less than or equal to `last_seen_limit`.
+///
+/// This function assumes there is at least one address in the `addrs` list.
+fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Utc>) {
     let most_recent_reported_seen_time = addrs
         .iter()
         .map(|addr| addr.get_last_seen())
@@ -365,11 +374,9 @@ fn validate_addrs(
 
     let offset = last_seen_limit - most_recent_reported_seen_time;
 
-    for addr in &mut addrs {
+    for addr in addrs {
         if addr.get_last_seen() > last_seen_limit {
             addr.offset_last_seen_by(offset);
         }
     }
-
-    addrs.into_iter()
 }
