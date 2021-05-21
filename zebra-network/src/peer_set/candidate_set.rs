@@ -359,7 +359,10 @@ fn validate_addrs(
     let offset = last_seen_limit - most_recent_reported_seen_time;
 
     addrs.into_iter().map(move |mut addr| {
-        addr.offset_last_seen_by(offset);
+        if addr.get_last_seen() > last_seen_limit {
+            addr.offset_last_seen_by(offset);
+        }
+
         addr
     })
 }
