@@ -248,6 +248,7 @@ impl MetaAddr {
     ///
     /// If the peer has already been interacted with by us, this method does nothing.
     pub fn offset_last_seen_by(&mut self, offset: Duration) {
+        // TODO: replace with `!self.has_been_attempted()` once #2160 merges
         if self.last_connection_state == NeverAttemptedGossiped {
             self.last_seen = self.last_seen + offset;
         }
