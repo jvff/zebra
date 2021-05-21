@@ -351,21 +351,25 @@ fn validate_addrs(
     // - Zebra should limit the number of addresses it uses from a single Addrs
     //   response (#1869)
 
-    let addrs: Vec<_> = addrs.into_iter().collect();
+    let mut addrs: Vec<_> = addrs.into_iter().collect();
+
+    if addrs.is_empty() {
+        return addrs.into_iter();
+    }
 
     let most_recent_reported_seen_time = addrs
         .iter()
         .map(|addr| addr.get_last_seen())
         .max()
-        .unwrap_or(last_seen_limit);
+        .expect("at least one peer in the address list");
 
     let offset = last_seen_limit - most_recent_reported_seen_time;
 
-    addrs.into_iter().map(move |mut addr| {
+    for addr in &mut addrs {
         if addr.get_last_seen() > last_seen_limit {
             addr.offset_last_seen_by(offset);
         }
+    }
 
-        addr
-    })
+    addrs.into_iter()
 }
