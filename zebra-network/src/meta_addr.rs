@@ -7,6 +7,7 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use chrono::Duration;
 
 use zebra_chain::serialization::{
     DateTime32, ReadZcashExt, SerializationError, TrustedPreallocate, WriteZcashExt,
@@ -236,6 +237,19 @@ impl MetaAddr {
     /// clock skew, or buggy or malicious peers.
     pub fn get_last_seen(&self) -> DateTime32 {
         self.last_seen
+    }
+
+    /// Update reported last time for `NeverAttempted` peer by applying an offset.
+    ///
+    /// This adds the provided offset to the `last_seen` time reported by the peer that gossiped
+    /// this address. This is done to compensate for any clock differences between the local node
+    /// and the node that reported the address so that the time doesn't appear to be in the future.
+    ///
+    /// If the peer has already been interacted with by us, this method does nothing.
+    pub fn offset_last_seen_by(&mut self, offset: Duration) {
+        if self.last_connection_state == NeverAttemptedGossiped {
+            self.last_seen = self.last_seen + offset;
+        }
     }
 
     /// Is this address a directly connected client?
