@@ -1,5 +1,6 @@
 use std::{cmp::min, mem, sync::Arc, time::Duration};
 
+use chrono::Utc;
 use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::time::{sleep, sleep_until, timeout, Sleep};
 use tower::{Service, ServiceExt};
@@ -245,6 +246,10 @@ where
     /// If the data in an address is invalid, this function can:
     /// - modify the address data, or
     /// - delete the address.
+    ///
+    /// Currently, this method will offset the reported `last_seen` time to prevent clock skews
+    /// from causing the peers to be placed too far back or in the front of the reconnection queue
+    /// incorrectly.
     fn validate_addrs(
         &self,
         addrs: impl IntoIterator<Item = MetaAddr>,
@@ -254,14 +259,27 @@ where
 
         // TODO:
         // We should eventually implement these checks in this function:
-        // - Zebra should stop believing far-future last_seen times from peers (#1871)
         // - Zebra should ignore peers that are older than 3 weeks (part of #1865)
         //   - Zebra should count back 3 weeks from the newest peer timestamp sent
         //     by the other peer, to compensate for clock skew
         // - Zebra should limit the number of addresses it uses from a single Addrs
         //   response (#1869)
 
-        addrs
+        let addrs: Vec<_> = addrs.into_iter().collect();
+        let now = Utc::now();
+
+        let most_recent_reported_seen_time = addrs
+            .iter()
+            .map(|addr| addr.get_last_seen())
+            .max()
+            .unwrap_or(now);
+
+        let offset = now - most_recent_reported_seen_time;
+
+        addrs.into_iter().map(move |mut addr| {
+            addr.offset_last_seen_by(offset);
+            addr
+        })
     }
 
     /// Add new `addrs` to the address book.
