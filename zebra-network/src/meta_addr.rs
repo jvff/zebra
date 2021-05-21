@@ -244,7 +244,7 @@ impl MetaAddr {
     ///
     /// This adds the provided offset to the `last_seen` time reported by the peer that gossiped
     /// this address. This is done to compensate for any clock differences between the local node
-    /// and the node that reported the address.
+    /// and the node that reported the address so that the time doesn't appear to be in the future.
     ///
     /// If the peer has already been interacted with by us, this method does nothing.
     pub fn offset_last_seen_by(&mut self, offset: Duration) {
