@@ -333,9 +333,11 @@ where
 /// - modify the address data, or
 /// - delete the address.
 ///
-/// Currently, this method will offset the reported `last_seen` time to prevent clock skews
-/// from causing the peers to be placed too far back or in the front of the reconnection queue
-/// incorrectly.
+/// # Security
+///
+/// Adjusts untrusted last seen times so they are not in the future. This stops
+/// malicious peers keeping all their addresses at the front of the connection
+/// queue. Honest peers with future clock skew also get adjusted.
 ///
 /// Rejects all addresses if there are at least two that have reported
 /// last_seen` times where one is so far in the future and another is so far in
@@ -369,7 +371,9 @@ fn validate_addrs(
 /// This will consider all addresses as invalid if trying to offset their
 /// `last_seen` times to be before the limit causes an overflow.
 ///
-/// This function assumes there is at least one address in the `addrs` list.
+/// # Panics
+///
+/// If the `addrs` list is empty.
 fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Utc>) {
     let (oldest_reported_seen_time, newest_reported_seen_time) = addrs.iter().fold(
         (chrono::MAX_DATETIME, chrono::MIN_DATETIME),
