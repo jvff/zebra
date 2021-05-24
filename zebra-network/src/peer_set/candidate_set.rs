@@ -374,10 +374,9 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
         .max()
         .expect("unexpected empty address list");
 
-    let offset = last_seen_limit - most_recent_reported_seen_time;
-
-    for addr in addrs {
-        if addr.get_last_seen() > last_seen_limit {
+    if most_recent_reported_seen_time > last_seen_limit {
+        let offset = last_seen_limit - most_recent_reported_seen_time;
+        for addr in addrs {
             addr.offset_last_seen_by(offset);
         }
     }
