@@ -72,6 +72,24 @@ fn offsets_all_last_seen_times_if_one_is_in_the_future() {
     assert_eq!(validated_peers, expected_peers);
 }
 
+/// Test that offset is not applied if the most recent `last_seen` time is equal to the limit.
+#[test]
+fn doesnt_offsets_if_most_recent_last_seen_times_is_exactly_the_limit() {
+    let last_seen_limit = Utc::now();
+
+    let input_peers = mock_gossiped_peers(vec![
+        last_seen_limit,
+        last_seen_limit - Duration::minutes(3),
+        last_seen_limit - Duration::hours(1),
+    ]);
+
+    let validated_peers: Vec<_> = validate_addrs(input_peers.clone(), last_seen_limit).collect();
+
+    let expected_peers = input_peers;
+
+    assert_eq!(validated_peers, expected_peers);
+}
+
 /// Create a mock list of gossiped [`MetaAddr`]s with the specified `last_seen_times`.
 ///
 /// The IP address and port of the generated ports should not matter for the test.
