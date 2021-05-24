@@ -46,26 +46,27 @@ fn doesnt_offset_last_seen_times_in_the_past() {
     assert_eq!(validated_peers, expected_peers);
 }
 
-/// Test that offset is only applied to the addresses that have `last_seen` times in the future.
+/// Test that offset is applied to all the addresses if at least one has a `last_seen` time in the
+/// future.
 ///
-/// Times that are in the past should be left unchanged.
+/// Times that are in the past should be changed as well.
 #[test]
-fn only_offsets_last_seen_times_in_the_future() {
+fn offsets_all_last_seen_times_if_one_is_in_the_future() {
     let last_seen_limit = Utc::now();
 
     let input_peers = mock_gossiped_peers(vec![
         last_seen_limit + Duration::minutes(55),
         last_seen_limit - Duration::days(3),
-        last_seen_limit + Duration::hours(2),
+        last_seen_limit - Duration::hours(2),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers, last_seen_limit).collect();
 
-    let expected_offset = Duration::hours(2);
+    let expected_offset = Duration::minutes(55);
     let expected_peers = mock_gossiped_peers(vec![
         last_seen_limit + Duration::minutes(55) - expected_offset,
-        last_seen_limit - Duration::days(3),
-        last_seen_limit + Duration::hours(2) - expected_offset,
+        last_seen_limit - Duration::days(3) - expected_offset,
+        last_seen_limit - Duration::hours(2) - expected_offset,
     ]);
 
     assert_eq!(validated_peers, expected_peers);
