@@ -372,7 +372,7 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
         .iter()
         .map(|addr| addr.get_last_seen())
         .max()
-        .expect("at least one peer in the address list");
+        .expect("unexpected empty address list");
 
     let offset = last_seen_limit - most_recent_reported_seen_time;
 
