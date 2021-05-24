@@ -245,7 +245,7 @@ impl MetaAddr {
     /// this address. This is done to compensate for any clock differences between the local node
     /// and the node that reported the address so that the time doesn't appear to be in the future.
     ///
-    /// If the peer has already been interacted with by us, this method does nothing.
+    /// If the peer has been attempted, this method does nothing.
     pub fn offset_last_seen_by(&mut self, offset: Duration) {
         // TODO: replace with `!self.has_been_attempted()` once #2160 merges
         if self.last_connection_state == NeverAttemptedGossiped {
