@@ -370,6 +370,7 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
         .max()
         .expect("unexpected empty address list");
 
+    // If any time is in the future, adjust all times, to compensate for clock skew on honest peers
     if most_recent_reported_seen_time > last_seen_limit {
         let offset = last_seen_limit - most_recent_reported_seen_time;
         for addr in addrs {
