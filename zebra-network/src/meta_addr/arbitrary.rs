@@ -2,8 +2,20 @@ use proptest::{arbitrary::any, arbitrary::Arbitrary, prelude::*};
 
 use super::{MetaAddr, PeerAddrState, PeerServices};
 
+use zebra_chain::serialization::arbitrary::datetime_u32;
+
 use chrono::{TimeZone, Utc};
 use std::net::SocketAddr;
+
+impl MetaAddr {
+    pub fn gossiped_strategy() -> BoxedStrategy<Self> {
+        (any::<SocketAddr>(), any::<PeerServices>(), datetime_u32())
+            .prop_map(|(address, services, untrusted_last_seen)| {
+                MetaAddr::new_gossiped_meta_addr(address, services, untrusted_last_seen)
+            })
+            .boxed()
+    }
+}
 
 impl Arbitrary for MetaAddr {
     type Parameters = ();
