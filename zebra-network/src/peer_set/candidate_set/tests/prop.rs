@@ -1,26 +1,14 @@
-use std::net::SocketAddr;
-
-use chrono::{TimeZone, Utc};
-use proptest::prelude::*;
+use chrono::Utc;
+use proptest::{collection::vec, prelude::*};
 
 use super::super::validate_addrs;
-use crate::types::{MetaAddr, PeerServices};
+use crate::types::MetaAddr;
 
 proptest! {
     /// Test that validated gossiped peers never have a `last_seen` time that's in the future.
     #[test]
-    fn no_last_seen_times_are_in_the_future(gossiped_peers in
-        any::<Vec<(SocketAddr, u32)>>().prop_map(|property_seeds| {
-            property_seeds
-                .into_iter()
-                .map(|(address, last_seen)| {
-                    MetaAddr::new_gossiped_meta_addr(
-                        address,
-                        PeerServices::NODE_NETWORK,
-                        Utc.timestamp(last_seen.into(), 0),
-                    )
-                })
-        })
+    fn no_last_seen_times_are_in_the_future(
+        gossiped_peers in vec(MetaAddr::gossiped_strategy(), 1..10),
     ) {
         zebra_test::init();
 
