@@ -338,6 +338,10 @@ where
 /// Adjusts untrusted last seen times so they are not in the future. This stops
 /// malicious peers keeping all their addresses at the front of the connection
 /// queue. Honest peers with future clock skew also get adjusted.
+///
+/// Rejects all addresses if there are at least two that have reported
+/// last_seen` times where one is so far in the future and another is so far in
+/// the past that they cause an overflow when offsetting the times.
 fn validate_addrs(
     addrs: impl IntoIterator<Item = MetaAddr>,
     last_seen_limit: DateTime<Utc>,
@@ -364,21 +368,37 @@ fn validate_addrs(
 
 /// Ensure all reported `last_seen` times are less than or equal to `last_seen_limit`.
 ///
+/// This will consider all addresses as invalid if trying to offset their
+/// `last_seen` times to be before the limit causes an overflow.
+///
 /// # Panics
 ///
 /// If the `addrs` list is empty.
 fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Utc>) {
-    let most_recent_reported_seen_time = addrs
-        .iter()
-        .map(|addr| addr.get_last_seen())
-        .max()
-        .expect("unexpected empty address list");
+    let (oldest_reported_seen_time, newest_reported_seen_time) = addrs.iter().fold(
+        (chrono::MAX_DATETIME, chrono::MIN_DATETIME),
+        |(oldest, newest), addr| {
+            let last_seen = addr.get_last_seen();
+            (oldest.min(last_seen), newest.max(last_seen))
+        },
+    );
 
     // If any time is in the future, adjust all times, to compensate for clock skew on honest peers
-    if most_recent_reported_seen_time > last_seen_limit {
-        let offset = last_seen_limit - most_recent_reported_seen_time;
-        for addr in addrs {
-            addr.offset_last_seen_by(offset);
+    if newest_reported_seen_time > last_seen_limit {
+        let offset = last_seen_limit - newest_reported_seen_time;
+
+        // Check if applying the offset can cause an overflow
+        if oldest_reported_seen_time
+            .checked_add_signed(offset)
+            .is_some()
+        {
+            // No overflow is possible, so apply offset to all addresses
+            for addr in addrs {
+                addr.offset_last_seen_by(offset);
+            }
+        } else {
+            // An overflow will occur, so reject all gossiped peers
+            addrs.clear();
         }
     }
 }
