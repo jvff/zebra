@@ -379,6 +379,7 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
         },
     );
 
+    // If any time is in the future, adjust all times, to compensate for clock skew on honest peers
     if newest_reported_seen_time > last_seen_limit {
         let offset = last_seen_limit - newest_reported_seen_time;
 
