@@ -17,7 +17,14 @@ proptest! {
         let validated_peers = validate_addrs(gossiped_peers, last_seen_limit);
 
         for peer in validated_peers {
-            prop_assert![peer.get_last_seen() <= last_seen_limit];
+            // Check that malicious peers can't control Zebra's future connections
+            //
+            // Compare timestamps, allowing an extra second, to account for `chrono` leap seconds:
+            // See https://docs.rs/chrono/0.4.19/chrono/naive/struct.NaiveTime.html#leap-second-handling
+            prop_assert!(peer.get_last_seen().timestamp() <= last_seen_limit.timestamp() + 1,
+                         "peer timestamp {} was greater than limit {}",
+                         peer.get_last_seen().timestamp(),
+                         last_seen_limit.timestamp());
         }
     }
 }
