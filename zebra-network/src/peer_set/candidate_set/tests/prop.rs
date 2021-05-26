@@ -1,6 +1,6 @@
 use proptest::{collection::vec, prelude::*};
 
-use zebra_chain::serialization::arbitrary::datetime_full;
+use zebra_chain::serialization::{arbitrary::datetime_full, ZcashDeserialize, ZcashSerialize};
 
 use super::super::validate_addrs;
 use crate::types::MetaAddr;
@@ -25,6 +25,47 @@ proptest! {
                          "peer timestamp {} was greater than limit {}",
                          peer.get_last_seen().timestamp(),
                          last_seen_limit.timestamp());
+
+            // Check that malicious peers can't make Zebra send bad times to other peers
+            // (after Zebra's standard sanitization)
+            let sanitized_peer = peer.sanitize();
+
+            // Check that sanitization doesn't put times in the future
+            prop_assert!(sanitized_peer.get_last_seen().timestamp() <= last_seen_limit.timestamp() + 1,
+                         "sanitized peer timestamp {} was greater than limit {}, original timestamp: {}",
+                         sanitized_peer.get_last_seen().timestamp(),
+                         last_seen_limit.timestamp(),
+                         peer.get_last_seen().timestamp());
+
+            // Check that malicious peers can't make Zebra's serialization fail
+            let addr_bytes = peer.zcash_serialize_to_vec();
+            prop_assert!(addr_bytes.is_ok(),
+                         "unexpected serialization error: {:?}, original timestamp: {}, sanitized timestamp: {}",
+                         addr_bytes,
+                         peer.get_last_seen().timestamp(),
+                         sanitized_peer.get_last_seen().timestamp());
+
+            // Assume other implementations deserialize like Zebra
+            let deserialized_peer = MetaAddr::zcash_deserialize(addr_bytes.unwrap().as_slice());
+            prop_assert!(deserialized_peer.is_ok(),
+                         "unexpected deserialization error: {:?}, original timestamp: {}, sanitized timestamp: {}",
+                         deserialized_peer,
+                         peer.get_last_seen().timestamp(),
+                         sanitized_peer.get_last_seen().timestamp());
+            let deserialized_peer = deserialized_peer.unwrap();
+
+            // Check that serialization hasn't modified the address
+            // (like the sanitized round-trip test)
+            prop_assert_eq!(sanitized_peer, deserialized_peer);
+
+            // Check that sanitization, serialization, and deserialization don't
+            // put times in the future
+            prop_assert!(deserialized_peer.get_last_seen().timestamp() <= last_seen_limit.timestamp() + 1,
+                         "deserialized peer timestamp {} was greater than limit {}, original timestamp: {}, sanitized timestamp: {}",
+                         deserialized_peer.get_last_seen().timestamp(),
+                         last_seen_limit.timestamp(),
+                         peer.get_last_seen().timestamp(),
+                         sanitized_peer.get_last_seen().timestamp());
         }
     }
 }
