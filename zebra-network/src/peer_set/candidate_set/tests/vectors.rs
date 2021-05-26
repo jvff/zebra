@@ -101,9 +101,9 @@ fn rejects_all_addresses_if_applying_offset_causes_an_overflow() {
         chrono::MAX_DATETIME,
     ]);
 
-    let validated_peers: Vec<_> = validate_addrs(input_peers.clone(), last_seen_limit).collect();
+    let mut validated_peers = validate_addrs(input_peers, last_seen_limit);
 
-    assert!(validated_peers.is_empty());
+    assert!(validated_peers.next().is_none());
 }
 
 /// Create a mock list of gossiped [`MetaAddr`]s with the specified `last_seen_times`.
