@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc e3fa1e39ae316d96fa2111ead4b6cf01c2cdb98ab238f090d225319dad4bb434 # shrinks to gossiped_peers = [MetaAddr { addr: 0.0.0.0:0, services: (empty), last_seen: 2001-09-07T00:00:00Z, last_connection_state: NeverAttemptedGossiped }], last_seen_limit = 1970-01-01T00:00:01Z
