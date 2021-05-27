@@ -239,18 +239,9 @@ impl MetaAddr {
         self.last_seen
     }
 
-    /// Update reported last time for `NeverAttempted` peer by applying an offset.
-    ///
-    /// This adds the provided offset to the `last_seen` time reported by the peer that gossiped
-    /// this address. This is done to compensate for any clock differences between the local node
-    /// and the node that reported the address so that the time doesn't appear to be in the future.
-    ///
-    /// If the peer has been attempted, this method does nothing.
-    pub fn offset_last_seen_by(&mut self, offset: Duration) {
-        // TODO: replace with `!self.has_been_attempted()` once #2160 merges
-        if self.last_connection_state == NeverAttemptedGossiped {
-            self.last_seen = self.last_seen + offset;
-        }
+    /// Set the last time we interacted with this peer.
+    pub(crate) fn set_last_seen(&mut self, last_seen: DateTime<Utc>) {
+        self.last_seen = last_seen;
     }
 
     /// Is this address a directly connected client?

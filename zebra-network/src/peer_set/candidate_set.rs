@@ -383,6 +383,9 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
 
     // If any time is in the future, adjust all times, to compensate for clock skew on honest peers
     if newest_reported_seen_time > last_seen_limit {
+        // This can not overflow or underflow, according to the documentation for
+        // `chrono::DateTime::signed_duration_since`:
+        // https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.signed_duration_since
         let offset = last_seen_limit - newest_reported_seen_time;
 
         // Check if applying the offset can cause an overflow
@@ -392,7 +395,8 @@ fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Ut
         {
             // No overflow is possible, so apply offset to all addresses
             for addr in addrs {
-                addr.offset_last_seen_by(offset);
+                let last_seen = addr.get_last_seen();
+                addr.set_last_seen(last_seen + offset);
             }
         } else {
             // An overflow will occur, so reject all gossiped peers
