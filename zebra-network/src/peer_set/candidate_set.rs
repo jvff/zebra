@@ -368,10 +368,6 @@ fn validate_addrs(
 ///
 /// This will consider all addresses as invalid if trying to offset their
 /// `last_seen` times to be before the limit causes an overflow.
-///
-/// # Panics
-///
-/// If the `addrs` list is empty.
 fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Utc>) {
     let (oldest_reported_seen_time, newest_reported_seen_time) = addrs.iter().fold(
         (chrono::MAX_DATETIME, chrono::MIN_DATETIME),
