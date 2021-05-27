@@ -1,6 +1,6 @@
 use std::net::{IpAddr, SocketAddr};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 
 use super::super::validate_addrs;
 use crate::types::{MetaAddr, PeerServices};
@@ -17,6 +17,11 @@ fn offsets_last_seen_times_in_the_future() {
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers, last_seen_limit).collect();
+
+    // Normalise the current time.
+    // Removes `chrono` nanoseconds, including any leap seconds:
+    // https://docs.rs/chrono/0.4.19/chrono/naive/struct.NaiveTime.html#leap-second-handling
+    let last_seen_limit = Utc.timestamp(last_seen_limit.timestamp(), 0);
 
     let expected_offset = Duration::minutes(45);
     let expected_peers = mock_gossiped_peers(vec![
@@ -62,6 +67,7 @@ fn offsets_all_last_seen_times_if_one_is_in_the_future() {
 
     let validated_peers: Vec<_> = validate_addrs(input_peers, last_seen_limit).collect();
 
+    let last_seen_limit = Utc.timestamp(last_seen_limit.timestamp(), 0);
     let expected_offset = Duration::minutes(55);
     let expected_peers = mock_gossiped_peers(vec![
         last_seen_limit + Duration::minutes(55) - expected_offset,
@@ -77,6 +83,7 @@ fn offsets_all_last_seen_times_if_one_is_in_the_future() {
 fn doesnt_offsets_if_most_recent_last_seen_times_is_exactly_the_limit() {
     let last_seen_limit = Utc::now();
 
+    let last_seen_limit = Utc.timestamp(last_seen_limit.timestamp(), 0);
     let input_peers = mock_gossiped_peers(vec![
         last_seen_limit,
         last_seen_limit - Duration::minutes(3),

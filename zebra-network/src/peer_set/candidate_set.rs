@@ -1,6 +1,6 @@
 use std::{cmp::min, mem, sync::Arc, time::Duration};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::time::{sleep, sleep_until, timeout, Sleep};
 use tower::{Service, ServiceExt};
@@ -358,6 +358,10 @@ fn validate_addrs(
     //   response (#1869)
 
     let mut addrs: Vec<_> = addrs.into_iter().collect();
+    // Normalise the DateTime.
+    // Removes `chrono` nanoseconds, including any leap seconds:
+    // https://docs.rs/chrono/0.4.19/chrono/naive/struct.NaiveTime.html#leap-second-handling
+    let last_seen_limit = Utc.timestamp(last_seen_limit.timestamp(), 0);
 
     if !addrs.is_empty() {
         limit_last_seen_times(&mut addrs, last_seen_limit);
