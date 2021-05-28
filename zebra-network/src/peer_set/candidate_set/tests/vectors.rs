@@ -1,6 +1,11 @@
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    convert::TryInto,
+    net::{IpAddr, SocketAddr},
+};
 
 use chrono::{DateTime, Duration, Utc};
+
+use zebra_chain::serialization::DateTime32;
 
 use super::super::validate_addrs;
 use crate::types::{MetaAddr, PeerServices};
@@ -8,21 +13,22 @@ use crate::types::{MetaAddr, PeerServices};
 /// Test that offset is applied when all addresses have `last_seen` times in the future.
 #[test]
 fn offsets_last_seen_times_in_the_future() {
-    let last_seen_limit = Utc::now();
+    let last_seen_limit = DateTime32::now();
+    let last_seen_limit_chrono = last_seen_limit.to_chrono();
 
     let input_peers = mock_gossiped_peers(vec![
-        last_seen_limit + Duration::minutes(30),
-        last_seen_limit + Duration::minutes(15),
-        last_seen_limit + Duration::minutes(45),
+        last_seen_limit_chrono + Duration::minutes(30),
+        last_seen_limit_chrono + Duration::minutes(15),
+        last_seen_limit_chrono + Duration::minutes(45),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers, last_seen_limit).collect();
 
     let expected_offset = Duration::minutes(45);
     let expected_peers = mock_gossiped_peers(vec![
-        last_seen_limit + Duration::minutes(30) - expected_offset,
-        last_seen_limit + Duration::minutes(15) - expected_offset,
-        last_seen_limit + Duration::minutes(45) - expected_offset,
+        last_seen_limit_chrono + Duration::minutes(30) - expected_offset,
+        last_seen_limit_chrono + Duration::minutes(15) - expected_offset,
+        last_seen_limit_chrono + Duration::minutes(45) - expected_offset,
     ]);
 
     assert_eq!(validated_peers, expected_peers);
@@ -31,12 +37,13 @@ fn offsets_last_seen_times_in_the_future() {
 /// Test that offset is not applied if all addresses have `last_seen` times that are in the past.
 #[test]
 fn doesnt_offset_last_seen_times_in_the_past() {
-    let last_seen_limit = Utc::now();
+    let last_seen_limit = DateTime32::now();
+    let last_seen_limit_chrono = last_seen_limit.to_chrono();
 
     let input_peers = mock_gossiped_peers(vec![
-        last_seen_limit - Duration::minutes(30),
-        last_seen_limit - Duration::minutes(45),
-        last_seen_limit - Duration::days(1),
+        last_seen_limit_chrono - Duration::minutes(30),
+        last_seen_limit_chrono - Duration::minutes(45),
+        last_seen_limit_chrono - Duration::days(1),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers.clone(), last_seen_limit).collect();
@@ -52,21 +59,22 @@ fn doesnt_offset_last_seen_times_in_the_past() {
 /// Times that are in the past should be changed as well.
 #[test]
 fn offsets_all_last_seen_times_if_one_is_in_the_future() {
-    let last_seen_limit = Utc::now();
+    let last_seen_limit = DateTime32::now();
+    let last_seen_limit_chrono = last_seen_limit.to_chrono();
 
     let input_peers = mock_gossiped_peers(vec![
-        last_seen_limit + Duration::minutes(55),
-        last_seen_limit - Duration::days(3),
-        last_seen_limit - Duration::hours(2),
+        last_seen_limit_chrono + Duration::minutes(55),
+        last_seen_limit_chrono - Duration::days(3),
+        last_seen_limit_chrono - Duration::hours(2),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers, last_seen_limit).collect();
 
     let expected_offset = Duration::minutes(55);
     let expected_peers = mock_gossiped_peers(vec![
-        last_seen_limit + Duration::minutes(55) - expected_offset,
-        last_seen_limit - Duration::days(3) - expected_offset,
-        last_seen_limit - Duration::hours(2) - expected_offset,
+        last_seen_limit_chrono + Duration::minutes(55) - expected_offset,
+        last_seen_limit_chrono - Duration::days(3) - expected_offset,
+        last_seen_limit_chrono - Duration::hours(2) - expected_offset,
     ]);
 
     assert_eq!(validated_peers, expected_peers);
@@ -75,12 +83,13 @@ fn offsets_all_last_seen_times_if_one_is_in_the_future() {
 /// Test that offset is not applied if the most recent `last_seen` time is equal to the limit.
 #[test]
 fn doesnt_offsets_if_most_recent_last_seen_times_is_exactly_the_limit() {
-    let last_seen_limit = Utc::now();
+    let last_seen_limit = DateTime32::now();
+    let last_seen_limit_chrono = last_seen_limit.to_chrono();
 
     let input_peers = mock_gossiped_peers(vec![
-        last_seen_limit,
-        last_seen_limit - Duration::minutes(3),
-        last_seen_limit - Duration::hours(1),
+        last_seen_limit_chrono,
+        last_seen_limit_chrono - Duration::minutes(3),
+        last_seen_limit_chrono - Duration::hours(1),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers.clone(), last_seen_limit).collect();
@@ -90,15 +99,15 @@ fn doesnt_offsets_if_most_recent_last_seen_times_is_exactly_the_limit() {
     assert_eq!(validated_peers, expected_peers);
 }
 
-/// Rejects all addresses if overflow occurs when applying the offset.
+/// Rejects all addresses if underflow occurs when applying the offset.
 #[test]
-fn rejects_all_addresses_if_applying_offset_causes_an_overflow() {
-    let last_seen_limit = Utc::now();
+fn rejects_all_addresses_if_applying_offset_causes_an_underflow() {
+    let last_seen_limit = DateTime32::now();
 
     let input_peers = mock_gossiped_peers(vec![
-        chrono::MIN_DATETIME,
-        last_seen_limit,
-        chrono::MAX_DATETIME,
+        DateTime32::from(u32::MIN).to_chrono(),
+        last_seen_limit.to_chrono(),
+        DateTime32::from(u32::MAX).to_chrono(),
     ]);
 
     let validated_peers: Vec<_> = validate_addrs(input_peers.clone(), last_seen_limit).collect();
@@ -114,6 +123,10 @@ fn mock_gossiped_peers(last_seen_times: impl IntoIterator<Item = DateTime<Utc>>)
         .into_iter()
         .enumerate()
         .map(|(index, last_seen)| {
+            let last_seen = last_seen
+                .try_into()
+                .expect("`last_seen` time doesn't fit in a `DateTime32`");
+
             MetaAddr::new_gossiped_meta_addr(
                 SocketAddr::new(IpAddr::from([192, 168, 1, index as u8]), 20_000),
                 PeerServices::NODE_NETWORK,
