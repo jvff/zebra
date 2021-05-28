@@ -7,7 +7,6 @@ use std::{
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use chrono::Duration;
 
 use zebra_chain::serialization::{
     DateTime32, ReadZcashExt, SerializationError, TrustedPreallocate, WriteZcashExt,
@@ -240,7 +239,7 @@ impl MetaAddr {
     }
 
     /// Set the last time we interacted with this peer.
-    pub(crate) fn set_last_seen(&mut self, last_seen: DateTime<Utc>) {
+    pub(crate) fn set_last_seen(&mut self, last_seen: DateTime32) {
         self.last_seen = last_seen;
     }
 
