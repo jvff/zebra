@@ -1,9 +1,10 @@
 use std::{cmp::min, mem, sync::Arc, time::Duration};
 
-use chrono::{DateTime, Utc};
 use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::time::{sleep, sleep_until, timeout, Sleep};
 use tower::{Service, ServiceExt};
+
+use zebra_chain::serialization::DateTime32;
 
 use crate::{constants, types::MetaAddr, AddressBook, BoxError, Request, Response};
 
@@ -232,7 +233,7 @@ where
                         ?addrs,
                         "got response to GetPeers"
                     );
-                    let addrs = validate_addrs(addrs, Utc::now());
+                    let addrs = validate_addrs(addrs, DateTime32::now());
                     self.send_addrs(addrs);
                 }
                 Err(e) => {
@@ -342,7 +343,7 @@ where
 /// Rejects all addresses if any calculated times overflow or underflow.
 fn validate_addrs(
     addrs: impl IntoIterator<Item = MetaAddr>,
-    last_seen_limit: DateTime<Utc>,
+    last_seen_limit: DateTime32,
 ) -> impl Iterator<Item = MetaAddr> {
     // Note: The address book handles duplicate addresses internally,
     // so we don't need to de-duplicate addresses here.
@@ -366,31 +367,28 @@ fn validate_addrs(
 ///
 /// This will consider all addresses as invalid if trying to offset their
 /// `last_seen` times to be before the limit causes an overflow.
-fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime<Utc>) {
-    let (oldest_reported_seen_time, newest_reported_seen_time) = addrs.iter().fold(
-        (chrono::MAX_DATETIME, chrono::MIN_DATETIME),
-        |(oldest, newest), addr| {
-            let last_seen = addr.get_last_seen();
-            (oldest.min(last_seen), newest.max(last_seen))
-        },
-    );
+fn limit_last_seen_times(addrs: &mut Vec<MetaAddr>, last_seen_limit: DateTime32) {
+    let (oldest_reported_seen_timestamp, newest_reported_seen_timestamp) =
+        addrs
+            .iter()
+            .fold((u32::MAX, u32::MIN), |(oldest, newest), addr| {
+                let last_seen = addr.get_last_seen().timestamp();
+                (oldest.min(last_seen), newest.max(last_seen))
+            });
 
     // If any time is in the future, adjust all times, to compensate for clock skew on honest peers
-    if newest_reported_seen_time > last_seen_limit {
-        // This can not overflow or underflow, according to the documentation for
-        // `chrono::DateTime::signed_duration_since`:
-        // https://docs.rs/chrono/0.4.19/chrono/struct.DateTime.html#method.signed_duration_since
-        let offset = last_seen_limit - newest_reported_seen_time;
+    if newest_reported_seen_timestamp > last_seen_limit.timestamp() {
+        let offset = newest_reported_seen_timestamp - last_seen_limit.timestamp();
 
-        // Check if applying the offset can cause an overflow
-        if oldest_reported_seen_time
-            .checked_add_signed(offset)
-            .is_some()
-        {
+        // Apply offset to oldest timestamp to check for underflow
+        let oldest_resulting_timestamp = oldest_reported_seen_timestamp as i64 - offset as i64;
+        if oldest_resulting_timestamp >= 0 {
             // No overflow is possible, so apply offset to all addresses
             for addr in addrs {
-                let last_seen = addr.get_last_seen();
-                addr.set_last_seen(last_seen + offset);
+                let old_last_seen = addr.get_last_seen().timestamp();
+                let new_last_seen = old_last_seen - offset;
+
+                addr.set_last_seen(new_last_seen.into());
             }
         } else {
             // An overflow will occur, so reject all gossiped peers
