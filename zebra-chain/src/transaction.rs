@@ -393,5 +393,25 @@ impl Transaction {
         }
     }
 
-    // TODO: orchard
+    // orchard
+
+    /// Iterate over the [`orchard::Action`]s in this transaction, if there are any.
+    pub fn orchard_actions(&self) -> Box<dyn Iterator<Item = &orchard::Action> + '_> {
+        match self {
+            Transaction::V5 {
+                orchard_shielded_data: Some(orchard_shielded_data),
+                ..
+            } => Box::new(orchard_shielded_data.actions()),
+
+            // No Actions
+            Transaction::V1 { .. }
+            | Transaction::V2 { .. }
+            | Transaction::V3 { .. }
+            | Transaction::V4 { .. }
+            | Transaction::V5 {
+                orchard_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+        }
+    }
 }
