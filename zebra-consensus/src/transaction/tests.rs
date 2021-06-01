@@ -1,6 +1,6 @@
 use zebra_chain::{
     parameters::Network,
-    transaction::{arbitrary::v5_fake_transactions_for_network, Transaction},
+    transaction::{arbitrary::fake_v5_transactions_for_network, Transaction},
 };
 
 use super::check;
@@ -18,7 +18,7 @@ fn v5_fake_transactions() -> Result<(), Report> {
     ];
 
     for (network, blocks) in networks {
-        for transaction in v5_fake_transactions_for_network(network, blocks) {
+        for transaction in fake_v5_transactions_for_network(network, blocks) {
             match check::has_inputs_and_outputs(&transaction) {
                 Ok(()) => (),
                 Err(TransactionError::NoInputs) | Err(TransactionError::NoOutputs) => (),
@@ -55,7 +55,7 @@ fn v5_fake_transactions() -> Result<(), Report> {
 
 #[test]
 fn v5_transaction_with_no_inputs_fails_validation() {
-    let transaction = v5_fake_transactions_for_network(
+    let transaction = fake_v5_transactions_for_network(
         Network::Mainnet,
         zebra_test::vectors::MAINNET_BLOCKS.iter(),
     )
@@ -77,7 +77,7 @@ fn v5_transaction_with_no_inputs_fails_validation() {
 
 #[test]
 fn v5_transaction_with_no_outputs_fails_validation() {
-    let transaction = v5_fake_transactions_for_network(
+    let transaction = fake_v5_transactions_for_network(
         Network::Mainnet,
         zebra_test::vectors::MAINNET_BLOCKS.iter(),
     )

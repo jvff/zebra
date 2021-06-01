@@ -538,7 +538,7 @@ fn sapling_spend_v4_to_fake_v5(
 ///
 /// These transactions are converted from non-V5 transactions that exist in the provided network
 /// blocks.
-pub fn v5_fake_transactions_for_network<'b>(
+pub fn fake_v5_transactions_for_network<'b>(
     network: Network,
     blocks: impl DoubleEndedIterator<Item = (&'b u32, &'b &'static [u8])> + 'b,
 ) -> impl DoubleEndedIterator<Item = Transaction> + 'b {
