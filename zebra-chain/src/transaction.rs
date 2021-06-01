@@ -395,6 +395,24 @@ impl Transaction {
 
     // orchard
 
+    /// Access the [`orchard::ShieldedData`] in this transaction, if the transaction has it,
+    /// regardless of version.
+    pub fn orchard_shielded_data(&self) -> Option<&orchard::ShieldedData> {
+        match self {
+            // Maybe Orchard shielded data
+            Transaction::V5 {
+                orchard_shielded_data,
+                ..
+            } => orchard_shielded_data.as_ref(),
+
+            // No Orchard shielded data
+            Transaction::V1 { .. }
+            | Transaction::V2 { .. }
+            | Transaction::V3 { .. }
+            | Transaction::V4 { .. } => None,
+        }
+    }
+
     /// Access the orchard::Nullifiers in this transaction, regardless of version.
     pub fn orchard_nullifiers(&self) -> Box<dyn Iterator<Item = &orchard::Nullifier> + '_> {
         // This function returns a boxed iterator because the different
