@@ -1,12 +1,44 @@
+use std::convert::TryFrom;
+
 use zebra_chain::{
+    amount::Amount,
     block::{Block, Height},
-    parameters::Network,
-    serialization::ZcashDeserializeInto,
-    transaction::{arbitrary::transaction_to_fake_v5, Transaction},
+    orchard,
+    parameters::{Network, NetworkUpgrade},
+    primitives::{redpallas::Signature, Halo2Proof},
+    serialization::{AtLeastOne, ZcashDeserializeInto},
+    transaction::{arbitrary::transaction_to_fake_v5, LockTime, Transaction},
 };
 
 use crate::error::TransactionError::*;
 use color_eyre::eyre::Report;
+
+#[test]
+fn transaction_with_orchard_actions_has_inputs_and_outputs() {
+    let dummy_action = orchard::AuthorizedAction {
+        action: ,
+        spend_auth_sig: Signature::from([0u8; 64]);
+    };
+
+    let dummy_orchard_shielded_data = orchard::ShieldedData {
+        flags: orchard::Flags::ENABLE_SPENDS,
+        value_balance: Amount::try_from(0).expect("invalid transaction amount"),
+        shared_anchor: orchard::tree::Root::default(),
+        proof: Halo2Proof(vec![]),
+        actions: AtLeastOne::try_from(vec![action]).expect("empty action list"),
+        binding_sig: Signature::from([0u8; 64]),
+    };
+
+    let transaction = Transaction::V5 {
+        network_upgrade: NetworkUpgrade::Nu5,
+        lock_time: LockTime::Height(Height(0)),
+        expiry_height: Height(u32::MAX),
+        inputs: vec![],
+        outputs: vec![],
+        sapling_shielded_data: None,
+        orchard_shielded_data: Some(dummy_orchard_shielded_data),
+    };
+}
 
 #[test]
 fn v5_fake_transactions() -> Result<(), Report> {
