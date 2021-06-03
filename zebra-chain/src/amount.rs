@@ -233,6 +233,12 @@ impl<C> PartialEq<i64> for Amount<C> {
     }
 }
 
+impl<C> PartialEq<Amount<C>> for i64 {
+    fn eq(&self, other: &Amount<C>) -> bool {
+        self.eq(&other.0)
+    }
+}
+
 impl Eq for Amount<NegativeAllowed> {}
 impl Eq for Amount<NonNegative> {}
 
