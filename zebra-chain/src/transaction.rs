@@ -435,7 +435,10 @@ impl Transaction {
     }
 
     /// Access the [`orchard::Nullifier`]s in this transaction, regardless of version.
-    pub fn orchard_nullifiers(&self) -> impl Iterator<Item = &orchard::Nullifier> {
-        self.orchard_shielded_data().map(orchard::ShieldedData::nullifiers).iter().flatten()
+    pub fn orchard_nullifiers(&self) -> impl Iterator<Item = &orchard::Nullifier> + '_ {
+        self.orchard_shielded_data()
+            .into_iter()
+            .map(orchard::ShieldedData::nullifiers)
+            .flatten()
     }
 }
