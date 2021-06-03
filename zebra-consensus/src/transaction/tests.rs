@@ -130,8 +130,28 @@ fn v5_transaction_with_no_outputs_fails_validation() {
     );
 }
 
+#[test]
+fn v5_coinbase_transaction_with_enable_spends_flag_fails_validation() {
+    let mut transaction = fake_v5_transactions_for_network(
+        Network::Mainnet,
+        zebra_test::vectors::MAINNET_BLOCKS.iter(),
+    )
+    .rev()
+    .find(|transaction| transaction.is_coinbase())
+    .expect("At least one fake V5 coinbase transaction in the test vectors");
+
+    let shielded_data = insert_dummy_orchard_shielded_data(&mut transaction);
+
+    shielded_data.flags = orchard::Flags::ENABLE_SPENDS;
+
+    assert_eq!(
+        check::coinbase_tx_no_prevout_joinsplit_spend(&transaction),
+        Err(TransactionError::CoinbaseHasEnableSpendsOrchard)
+    );
+}
+
 // Utility functions
-fn insert_dummy_orchard_shielded_data(transaction: &mut Transaction) {
+fn insert_dummy_orchard_shielded_data(transaction: &mut Transaction) -> &mut orchard::ShieldedData {
     // Create a dummy action, it doesn't need to be valid
     let dummy_action_bytes = [0u8; 820];
     let mut dummy_action_bytes_reader = &dummy_action_bytes[..];
@@ -159,7 +179,13 @@ fn insert_dummy_orchard_shielded_data(transaction: &mut Transaction) {
         Transaction::V5 {
             orchard_shielded_data,
             ..
-        } => *orchard_shielded_data = Some(dummy_shielded_data),
+        } => {
+            *orchard_shielded_data = Some(dummy_shielded_data);
+
+            orchard_shielded_data
+                .as_mut()
+                .expect("shielded data was just inserted")
+        }
         _ => panic!("Fake V5 transaction is not V5"),
     }
 }
