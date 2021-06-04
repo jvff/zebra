@@ -83,7 +83,7 @@ where
 {
     let mut minimum_reconnect_instant = Instant::now();
 
-    for _ in 1..candidates {
+    for _ in 0..candidates {
         assert!(candidate_set.next().await.is_some());
         assert!(Instant::now() >= minimum_reconnect_instant);
 
