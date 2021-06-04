@@ -194,15 +194,17 @@ macro_rules! at_least_one {
 
     ($element:expr; $count:expr) => (
         {
-            <Vec<_> as std::convert::TryInto<AtLeastOne<_>>>::try_into(vec![$element; $expr])
-                .expect("at least one element in `AtLeastOne<_>`")
+            <Vec<_> as std::convert::TryInto<$crate::serialization::AtLeastOne<_>>>::try_into(
+                vec![$element; $expr],
+            ).expect("at least one element in `AtLeastOne<_>`")
         }
     );
 
     ($($element:expr),+ $(,)?) => (
         {
-            <Vec<_> as std::convert::TryInto<AtLeastOne<_>>>::try_into(vec![$($element),*])
-                .expect("at least one element in `AtLeastOne<_>`")
+            <Vec<_> as std::convert::TryInto<$crate::serialization::AtLeastOne<_>>>::try_into(
+                vec![$($element),*],
+            ).expect("at least one element in `AtLeastOne<_>`")
         }
     );
 }
