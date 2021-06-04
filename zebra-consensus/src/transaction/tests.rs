@@ -1,12 +1,10 @@
-use std::convert::TryFrom;
-
 use zebra_chain::{
-    amount::Amount,
-    at_least_one, orchard,
+    orchard,
     parameters::Network,
-    primitives::{redpallas, Halo2Proof},
-    serialization::{AtLeastOne, ZcashDeserialize},
-    transaction::{arbitrary::fake_v5_transactions_for_network, Transaction},
+    transaction::{
+        arbitrary::{fake_v5_transactions_for_network, insert_fake_orchard_shielded_data},
+        Transaction,
+    },
 };
 
 use super::check;
@@ -76,9 +74,9 @@ fn fake_v5_transaction_with_orchard_actions_has_inputs_and_outputs() {
     })
     .expect("At least one fake V5 transaction with no inputs and no outputs");
 
-    // Insert dummy Orchard shielded data to the transaction, which has at least one action (this is
+    // Insert fake Orchard shielded data to the transaction, which has at least one action (this is
     // guaranteed structurally by `orchard::ShieldedData`)
-    insert_dummy_orchard_shielded_data(&mut transaction);
+    insert_fake_orchard_shielded_data(&mut transaction);
 
     // If a transaction has at least one Orchard shielded action, it should be considered to have
     // inputs and/or outputs
@@ -140,7 +138,7 @@ fn v5_coinbase_transaction_without_enable_spends_flag_passes_validation() {
     .find(|transaction| transaction.is_coinbase())
     .expect("At least one fake V5 coinbase transaction in the test vectors");
 
-    insert_dummy_orchard_shielded_data(&mut transaction);
+    insert_fake_orchard_shielded_data(&mut transaction);
 
     assert!(check::coinbase_tx_no_prevout_joinsplit_spend(&transaction).is_ok(),);
 }
@@ -155,7 +153,7 @@ fn v5_coinbase_transaction_with_enable_spends_flag_fails_validation() {
     .find(|transaction| transaction.is_coinbase())
     .expect("At least one fake V5 coinbase transaction in the test vectors");
 
-    let shielded_data = insert_dummy_orchard_shielded_data(&mut transaction);
+    let shielded_data = insert_fake_orchard_shielded_data(&mut transaction);
 
     shielded_data.flags = orchard::Flags::ENABLE_SPENDS;
 
@@ -163,44 +161,4 @@ fn v5_coinbase_transaction_with_enable_spends_flag_fails_validation() {
         check::coinbase_tx_no_prevout_joinsplit_spend(&transaction),
         Err(TransactionError::CoinbaseHasEnableSpendsOrchard)
     );
-}
-
-// Utility functions
-fn insert_dummy_orchard_shielded_data(transaction: &mut Transaction) -> &mut orchard::ShieldedData {
-    // Create a dummy action, it doesn't need to be valid
-    let dummy_action_bytes = [0u8; 820];
-    let mut dummy_action_bytes_reader = &dummy_action_bytes[..];
-    let dummy_action = orchard::Action::zcash_deserialize(&mut dummy_action_bytes_reader)
-        .expect("Dummy action should deserialize");
-
-    // Pair the dummy action with a fake signature
-    let dummy_authorized_action = orchard::AuthorizedAction {
-        action: dummy_action,
-        spend_auth_sig: redpallas::Signature::from([0u8; 64]),
-    };
-
-    // Place the dummy action inside the Orchard shielded data
-    let dummy_shielded_data = orchard::ShieldedData {
-        flags: orchard::Flags::empty(),
-        value_balance: Amount::try_from(0).expect("invalid transaction amount"),
-        shared_anchor: orchard::tree::Root::default(),
-        proof: Halo2Proof(vec![]),
-        actions: at_least_one![dummy_authorized_action],
-        binding_sig: redpallas::Signature::from([0u8; 64]),
-    };
-
-    // Replace the shielded data in the transaction
-    match transaction {
-        Transaction::V5 {
-            orchard_shielded_data,
-            ..
-        } => {
-            *orchard_shielded_data = Some(dummy_shielded_data);
-
-            orchard_shielded_data
-                .as_mut()
-                .expect("shielded data was just inserted")
-        }
-        _ => panic!("Fake V5 transaction is not V5"),
-    }
 }
