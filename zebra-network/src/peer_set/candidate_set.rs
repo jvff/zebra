@@ -1,4 +1,9 @@
-use std::{cmp::min, mem, sync::Arc, time::Duration};
+use std::{
+    cmp::min,
+    mem,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use futures::stream::{FuturesUnordered, StreamExt};
 use tokio::time::{sleep, sleep_until, timeout, Sleep};
@@ -109,6 +114,7 @@ pub(super) struct CandidateSet<S> {
     pub(super) address_book: Arc<std::sync::Mutex<AddressBook>>,
     pub(super) peer_service: S,
     next_peer_min_wait: Sleep,
+    next_update_time: Instant,
 }
 
 impl<S> CandidateSet<S>
@@ -124,6 +130,14 @@ where
     /// are initiated at least `MIN_PEER_CONNECTION_INTERVAL` apart.
     const MIN_PEER_CONNECTION_INTERVAL: Duration = Duration::from_millis(100);
 
+    /// The minimum time between successive calls to [`CandidateSet::update()`][Self::update].
+    ///
+    /// ## Security
+    ///
+    /// Zebra resists distributed denial of service attacks by making sure that requests for more
+    /// peer addresses are sent to the same peer at least `MIN_PEER_GET_ADDR_INTERVAL` apart.
+    const MIN_PEER_GET_ADDR_INTERVAL: Duration = Duration::from_secs(10);
+
     /// Uses `address_book` and `peer_service` to manage a [`CandidateSet`] of peers.
     pub fn new(
         address_book: Arc<std::sync::Mutex<AddressBook>>,
@@ -133,14 +147,27 @@ where
             address_book,
             peer_service,
             next_peer_min_wait: sleep(Duration::from_secs(0)),
+            next_update_time: Instant::now(),
         }
     }
 
     /// Update the peer set from the network, using the default fanout limit.
     ///
     /// See [`update_initial`][Self::update_initial] for details.
+    ///
+    /// ## Security
+    ///
+    /// This call is rate-limited to prevent sending a burst of repeated requests for new peer
+    /// addresses to the same peers. Each call will only update the [`CandidateSet`] if more time
+    /// than [`MIN_PEER_GET_ADDR_INTERVAL`][Self::MIN_PEER_GET_ADDR_INTERVAL] has passed since the
+    /// last call.
     pub async fn update(&mut self) -> Result<(), BoxError> {
-        self.update_timeout(None).await
+        if self.next_update_time <= Instant::now() {
+            self.update_timeout(None).await?;
+            self.next_update_time = Instant::now() + Self::MIN_PEER_GET_ADDR_INTERVAL;
+        }
+
+        Ok(())
     }
 
     /// Update the peer set from the network, limiting the fanout to
