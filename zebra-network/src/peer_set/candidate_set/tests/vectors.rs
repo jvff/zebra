@@ -11,7 +11,7 @@ use chrono::{DateTime, Duration, Utc};
 use futures::future;
 use tokio::{
     runtime::Runtime,
-    time::{sleep, Instant},
+    time::{self, Instant},
 };
 use tracing::Span;
 
@@ -130,11 +130,7 @@ fn rejects_all_addresses_if_applying_offset_causes_an_underflow() {
 }
 
 /// Test that calls to [`CandidateSet::update`] are rate limited.
-///
-/// This test is ignored by default because it takes about 31 seconds to run due to the 10 second
-/// rate limit interval.
 #[test]
-#[ignore]
 fn candidate_set_updates_are_rate_limited() {
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     let _guard = runtime.enter();
@@ -167,6 +163,8 @@ fn candidate_set_updates_are_rate_limited() {
     let mut candidate_set = CandidateSet::new(Arc::new(Mutex::new(address_book)), peer_service);
 
     runtime.block_on(async move {
+        time::pause();
+
         let time_limit = Instant::now() + StdDuration::from_secs(31);
 
         while Instant::now() <= time_limit {
@@ -174,8 +172,8 @@ fn candidate_set_updates_are_rate_limited() {
                 .update()
                 .await
                 .expect("Call to CandidateSet::update should not fail");
-            // Avoid behaving too much like a spin-lock
-            sleep(StdDuration::from_millis(1)).await;
+
+            time::advance(rate_limit_interval / 3).await;
         }
     });
 }
