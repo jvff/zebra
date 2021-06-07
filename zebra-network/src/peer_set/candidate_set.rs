@@ -1,12 +1,7 @@
-use std::{
-    cmp::min,
-    mem,
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::{cmp::min, mem, sync::Arc, time::Duration};
 
 use futures::stream::{FuturesUnordered, StreamExt};
-use tokio::time::{sleep, sleep_until, timeout, Sleep};
+use tokio::time::{sleep, sleep_until, timeout, Instant, Sleep};
 use tower::{Service, ServiceExt};
 
 use zebra_chain::serialization::DateTime32;

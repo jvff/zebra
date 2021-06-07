@@ -4,12 +4,15 @@ use std::{
     iter,
     net::{IpAddr, SocketAddr},
     sync::{Arc, Mutex},
-    time::{Duration as StdDuration, Instant},
+    time::Duration as StdDuration,
 };
 
 use chrono::{DateTime, Duration, Utc};
 use futures::future;
-use tokio::{runtime::Runtime, time::sleep};
+use tokio::{
+    runtime::Runtime,
+    time::{sleep, Instant},
+};
 use tower::{util::BoxService, BoxError};
 use tracing::Span;
 
