@@ -117,14 +117,6 @@ where
     S: Service<Request, Response = Response, Error = BoxError>,
     S::Future: Send + 'static,
 {
-    /// The minimum time between successive calls to [`CandidateSet::next()`][Self::next].
-    ///
-    /// ## Security
-    ///
-    /// Zebra resists distributed denial of service attacks by making sure that new peer connections
-    /// are initiated at least `MIN_PEER_CONNECTION_INTERVAL` apart.
-    const MIN_PEER_CONNECTION_INTERVAL: Duration = Duration::from_millis(100);
-
     /// The minimum time between successive calls to [`CandidateSet::update()`][Self::update].
     ///
     /// ## Security
@@ -305,7 +297,7 @@ where
     /// `MIN_PEER_CONNECTION_INTERVAL` apart.
     pub async fn next(&mut self) -> Option<MetaAddr> {
         let current_deadline = self.next_peer_min_wait.deadline();
-        let mut sleep = sleep_until(current_deadline + Self::MIN_PEER_CONNECTION_INTERVAL);
+        let mut sleep = sleep_until(current_deadline + constants::MIN_PEER_CONNECTION_INTERVAL);
         mem::swap(&mut self.next_peer_min_wait, &mut sleep);
 
         // # Correctness
