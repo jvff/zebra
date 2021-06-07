@@ -143,7 +143,9 @@ fn candidate_set_updates_are_rate_limited() {
     runtime.block_on(async move {
         time::pause();
 
-        let time_limit = Instant::now() + StdDuration::from_secs(31);
+        // Run the test for enough time for `update` to actually run three times
+        let time_limit =
+            Instant::now() + 3 * MIN_PEER_GET_ADDR_INTERVAL + StdDuration::from_secs(1);
 
         while Instant::now() <= time_limit {
             candidate_set
@@ -151,6 +153,7 @@ fn candidate_set_updates_are_rate_limited() {
                 .await
                 .expect("Call to CandidateSet::update should not fail");
 
+            // Call `update` frequently enough to have at least two skipped calls
             time::advance(MIN_PEER_GET_ADDR_INTERVAL / 3).await;
         }
     });
