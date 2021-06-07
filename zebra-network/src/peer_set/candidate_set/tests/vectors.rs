@@ -190,7 +190,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        // After waiting for the minimum interval the call to `update` should succeed
+        // After waiting for at least the minimum interval the call to `update` should succeed
         time::advance(MIN_PEER_GET_ADDR_INTERVAL).await;
         candidate_set
             .update()
