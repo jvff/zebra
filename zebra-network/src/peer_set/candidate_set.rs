@@ -117,14 +117,6 @@ where
     S: Service<Request, Response = Response, Error = BoxError>,
     S::Future: Send + 'static,
 {
-    /// The minimum time between successive calls to [`CandidateSet::update()`][Self::update].
-    ///
-    /// ## Security
-    ///
-    /// Zebra resists distributed denial of service attacks by making sure that requests for more
-    /// peer addresses are sent at least `MIN_PEER_GET_ADDR_INTERVAL` apart.
-    const MIN_PEER_GET_ADDR_INTERVAL: Duration = Duration::from_secs(10);
-
     /// Uses `address_book` and `peer_service` to manage a [`CandidateSet`] of peers.
     pub fn new(
         address_book: Arc<std::sync::Mutex<AddressBook>>,
@@ -146,12 +138,12 @@ where
     ///
     /// This call is rate-limited to prevent sending a burst of repeated requests for new peer
     /// addresses. Each call will only update the [`CandidateSet`] if more time
-    /// than [`MIN_PEER_GET_ADDR_INTERVAL`][Self::MIN_PEER_GET_ADDR_INTERVAL] has passed since the
-    /// last call. Otherwise, the update is skipped.
+    /// than [`MIN_PEER_GET_ADDR_INTERVAL`][constants::MIN_PEER_GET_ADDR_INTERVAL] has passed since
+    /// the last call. Otherwise, the update is skipped.
     pub async fn update(&mut self) -> Result<(), BoxError> {
         if self.next_update_time <= Instant::now() {
             self.update_timeout(None).await?;
-            self.next_update_time = Instant::now() + Self::MIN_PEER_GET_ADDR_INTERVAL;
+            self.next_update_time = Instant::now() + constants::MIN_PEER_GET_ADDR_INTERVAL;
         }
 
         Ok(())
