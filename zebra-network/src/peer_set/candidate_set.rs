@@ -137,9 +137,9 @@ where
     /// ## Security
     ///
     /// This call is rate-limited to prevent sending a burst of repeated requests for new peer
-    /// addresses to the same peers. Each call will only update the [`CandidateSet`] if more time
-    /// than [`MIN_PEER_GET_ADDR_INTERVAL`][constants::MIN_PEER_GET_ADDR_INTERVAL] has passed since
-    /// the last call.
+    /// addresses. Each call will only update the [`CandidateSet`] if more time than
+    /// [`MIN_PEER_GET_ADDR_INTERVAL`][Self::MIN_PEER_GET_ADDR_INTERVAL] has passed since the last
+    /// call. Otherwise, the update is skipped.
     pub async fn update(&mut self) -> Result<(), BoxError> {
         self.update_timeout(None).await
     }
