@@ -135,7 +135,7 @@ where
     /// ## Security
     ///
     /// Zebra resists distributed denial of service attacks by making sure that requests for more
-    /// peer addresses are sent to the same peer at least `MIN_PEER_GET_ADDR_INTERVAL` apart.
+    /// peer addresses are sent at least `MIN_PEER_GET_ADDR_INTERVAL` apart.
     const MIN_PEER_GET_ADDR_INTERVAL: Duration = Duration::from_secs(10);
 
     /// Uses `address_book` and `peer_service` to manage a [`CandidateSet`] of peers.
