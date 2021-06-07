@@ -13,14 +13,13 @@ use tokio::{
     runtime::Runtime,
     time::{sleep, Instant},
 };
-use tower::{util::BoxService, BoxError};
 use tracing::Span;
 
 use zebra_chain::serialization::DateTime32;
 
 use super::super::{validate_addrs, CandidateSet};
 use crate::{
-    constants::GET_ADDR_FANOUT,
+    constants::{GET_ADDR_FANOUT, MIN_PEER_GET_ADDR_INTERVAL},
     types::{MetaAddr, PeerServices},
     AddressBook, Config, Request, Response,
 };
@@ -143,8 +142,7 @@ fn candidate_set_updates_are_rate_limited() {
     let mut peer_request_tracker: VecDeque<_> =
         iter::repeat(Instant::now()).take(GET_ADDR_FANOUT).collect();
 
-    let rate_limit_interval =
-        CandidateSet::<BoxService<Request, Response, BoxError>>::MIN_PEER_GET_ADDR_INTERVAL;
+    let rate_limit_interval = MIN_PEER_GET_ADDR_INTERVAL;
 
     let peer_service = tower::service_fn(move |request| {
         match request {
