@@ -246,7 +246,7 @@ fn mock_peer_service<E>(
                 // Check that the request was rate limited
                 assert!(Instant::now() >= authorized_request_time);
                 // Push a new authorization, updated by the rate limit interval
-                peer_request_tracker.push_back(authorized_request_time + rate_limit_interval);
+                peer_request_tracker.push_back(Instant::now() + rate_limit_interval);
 
                 // Return an empty list of peer addresses
                 future::ok(Response::Peers(vec![]))
