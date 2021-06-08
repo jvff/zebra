@@ -109,7 +109,7 @@ pub(super) struct CandidateSet<S> {
     pub(super) address_book: Arc<std::sync::Mutex<AddressBook>>,
     pub(super) peer_service: S,
     wait_next_handshake: Sleep,
-    next_update_time: Instant,
+    min_next_crawl: Instant,
 }
 
 impl<S> CandidateSet<S>
@@ -126,7 +126,7 @@ where
             address_book,
             peer_service,
             wait_next_handshake: sleep(Duration::from_secs(0)),
-            next_update_time: Instant::now(),
+            min_next_crawl: Instant::now(),
         }
     }
 
@@ -189,7 +189,7 @@ where
         // SECURITY
         //
         // Rate limit sending `GetAddr` messages to peers.
-        if self.next_update_time <= Instant::now() {
+        if self.min_next_crawl <= Instant::now() {
             // CORRECTNESS
             //
             // Use a timeout to avoid deadlocks when there are no connected
@@ -206,7 +206,7 @@ where
                 info!("timeout waiting for the peer service to become ready");
             }
 
-            self.next_update_time = Instant::now() + constants::MIN_PEER_GET_ADDR_INTERVAL;
+            self.min_next_crawl = Instant::now() + constants::MIN_PEER_GET_ADDR_INTERVAL;
         }
 
         Ok(())
