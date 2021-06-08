@@ -133,13 +133,6 @@ where
     /// Update the peer set from the network, using the default fanout limit.
     ///
     /// See [`update_initial`][Self::update_initial] for details.
-    ///
-    /// ## Security
-    ///
-    /// This call is rate-limited to prevent sending a burst of repeated requests for new peer
-    /// addresses. Each call will only update the [`CandidateSet`] if more time than
-    /// [`MIN_PEER_GET_ADDR_INTERVAL`][Self::MIN_PEER_GET_ADDR_INTERVAL] has passed since the last
-    /// call. Otherwise, the update is skipped.
     pub async fn update(&mut self) -> Result<(), BoxError> {
         self.update_timeout(None).await
     }
