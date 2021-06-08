@@ -192,7 +192,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        assert_eq!(call_count.load(Ordering::Relaxed), 1 * GET_ADDR_FANOUT);
+        assert_eq!(call_count.load(Ordering::Relaxed), GET_ADDR_FANOUT);
 
         // The following two calls to `update` should be skipped
         candidate_set
@@ -205,7 +205,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        assert_eq!(call_count.load(Ordering::Relaxed), 1 * GET_ADDR_FANOUT);
+        assert_eq!(call_count.load(Ordering::Relaxed), GET_ADDR_FANOUT);
 
         // After waiting for at least the minimum interval the call to `update` should succeed
         time::advance(MIN_PEER_GET_ADDR_INTERVAL).await;
