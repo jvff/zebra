@@ -180,8 +180,8 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
     let _guard = runtime.enter();
 
     let address_book = AddressBook::new(&Config::default(), Span::none());
-    let mut candidate_set =
-        CandidateSet::new(Arc::new(Mutex::new(address_book)), mock_peer_service());
+    let (peer_service, call_count) = mock_peer_service();
+    let mut candidate_set = CandidateSet::new(Arc::new(Mutex::new(address_book)), peer_service);
 
     runtime.block_on(async move {
         time::pause();
@@ -191,6 +191,8 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .update_initial(GET_ADDR_FANOUT)
             .await
             .expect("Call to CandidateSet::update should not fail");
+
+        assert_eq!(call_count.load(Ordering::Relaxed), 1 * GET_ADDR_FANOUT);
 
         // The following two calls to `update` should be skipped
         candidate_set
@@ -203,12 +205,16 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
+        assert_eq!(call_count.load(Ordering::Relaxed), 1 * GET_ADDR_FANOUT);
+
         // After waiting for at least the minimum interval the call to `update` should succeed
         time::advance(MIN_PEER_GET_ADDR_INTERVAL).await;
         candidate_set
             .update()
             .await
             .expect("Call to CandidateSet::update should not fail");
+
+        assert_eq!(call_count.load(Ordering::Relaxed), 2 * GET_ADDR_FANOUT);
     });
 }
 
