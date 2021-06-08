@@ -165,7 +165,7 @@ fn candidate_set_updates_are_rate_limited() {
         }
 
         assert_eq!(
-            call_count.load(Ordering::Relaxed),
+            call_count.load(Ordering::SeqCst),
             INTERVALS_TO_RUN as usize * GET_ADDR_FANOUT
         );
     });
@@ -191,7 +191,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        assert_eq!(call_count.load(Ordering::Relaxed), GET_ADDR_FANOUT);
+        assert_eq!(call_count.load(Ordering::SeqCst), GET_ADDR_FANOUT);
 
         // The following two calls to `update` should be skipped
         candidate_set
@@ -204,7 +204,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        assert_eq!(call_count.load(Ordering::Relaxed), GET_ADDR_FANOUT);
+        assert_eq!(call_count.load(Ordering::SeqCst), GET_ADDR_FANOUT);
 
         // After waiting for at least the minimum interval the call to `update` should succeed
         time::advance(MIN_PEER_GET_ADDR_INTERVAL).await;
@@ -213,7 +213,7 @@ fn candidate_set_update_after_update_initial_is_rate_limited() {
             .await
             .expect("Call to CandidateSet::update should not fail");
 
-        assert_eq!(call_count.load(Ordering::Relaxed), 2 * GET_ADDR_FANOUT);
+        assert_eq!(call_count.load(Ordering::SeqCst), 2 * GET_ADDR_FANOUT);
     });
 }
 
@@ -274,7 +274,7 @@ fn mock_peer_service<E>() -> (
                 peer_request_tracker.push_back(Instant::now() + rate_limit_interval);
 
                 // Increment count of calls
-                call_counter.fetch_add(1, Ordering::Relaxed);
+                call_counter.fetch_add(1, Ordering::SeqCst);
 
                 // Return an empty list of peer addresses
                 future::ok(Response::Peers(vec![]))
