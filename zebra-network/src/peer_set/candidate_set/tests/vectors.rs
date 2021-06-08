@@ -161,7 +161,7 @@ fn candidate_set_updates_are_rate_limited() {
                 .await
                 .expect("Call to CandidateSet::update should not fail");
 
-            // Call `update` frequently enough to have at least two skipped calls
+            // Call `update` frequently enough to have at least two skipped calls per interval
             time::advance(MIN_PEER_GET_ADDR_INTERVAL / POLL_FREQUENCY_FACTOR).await;
         }
 
