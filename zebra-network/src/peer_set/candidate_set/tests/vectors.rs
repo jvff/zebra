@@ -133,6 +133,11 @@ fn rejects_all_addresses_if_applying_offset_causes_an_underflow() {
 /// Test that calls to [`CandidateSet::update`] are rate limited.
 #[test]
 fn candidate_set_updates_are_rate_limited() {
+    // Run the test for enough time for `update` to actually run three times
+    const INTERVALS_TO_RUN: u32 = 3;
+    // How faster should `update` be called than the expected interval
+    const POLL_FREQUENCY_FACTOR: u32 = 3;
+
     let runtime = Runtime::new().expect("Failed to create Tokio runtime");
     let _guard = runtime.enter();
 
@@ -143,9 +148,9 @@ fn candidate_set_updates_are_rate_limited() {
     runtime.block_on(async move {
         time::pause();
 
-        // Run the test for enough time for `update` to actually run three times
-        let time_limit =
-            Instant::now() + 3 * MIN_PEER_GET_ADDR_INTERVAL + StdDuration::from_secs(1);
+        let time_limit = Instant::now()
+            + INTERVALS_TO_RUN * MIN_PEER_GET_ADDR_INTERVAL
+            + StdDuration::from_secs(1);
 
         while Instant::now() <= time_limit {
             candidate_set
@@ -154,7 +159,7 @@ fn candidate_set_updates_are_rate_limited() {
                 .expect("Call to CandidateSet::update should not fail");
 
             // Call `update` frequently enough to have at least two skipped calls
-            time::advance(MIN_PEER_GET_ADDR_INTERVAL / 3).await;
+            time::advance(MIN_PEER_GET_ADDR_INTERVAL / POLL_FREQUENCY_FACTOR).await;
         }
     });
 }
