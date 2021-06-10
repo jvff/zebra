@@ -188,7 +188,7 @@ where
     async fn verify_v4_transaction(
         request: &Request,
         network: Network,
-        mut script_verifier: script::Verifier<ZS>,
+        script_verifier: script::Verifier<ZS>,
         inputs: &[transparent::Input],
         joinsplit_data: &Option<transaction::JoinSplitData<Groth16Proof>>,
         sapling_shielded_data: &Option<sapling::ShieldedData<sapling::PerSpendAnchor>>,
@@ -213,20 +213,14 @@ where
         if tx.is_coinbase() {
             check::coinbase_tx_no_prevout_joinsplit_spend(&tx)?;
         } else {
-            // feed all of the inputs to the script and shielded verifiers
-            // the script_verifier also checks transparent sighashes, using its own implementation
-            let cached_ffi_transaction = Arc::new(CachedFfiTransaction::new(tx.clone()));
-
-            for input_index in 0..inputs.len() {
-                let rsp = script_verifier.ready_and().await?.call(script::Request {
-                    upgrade,
-                    known_utxos: request.known_utxos().clone(),
-                    cached_ffi_transaction: cached_ffi_transaction.clone(),
-                    input_index,
-                });
-
-                async_checks.push(rsp);
-            }
+            Self::verify_scripts(
+                request,
+                upgrade,
+                script_verifier,
+                inputs.len(),
+                &mut async_checks,
+            )
+            .await?;
         }
 
         let shielded_sighash = tx.sighash(upgrade, HashType::ALL, None);
@@ -364,5 +358,33 @@ where
         }
 
         Ok(tx.hash())
+    }
+
+    async fn verify_scripts(
+        request: &Request,
+        upgrade: NetworkUpgrade,
+        mut script_verifier: script::Verifier<ZS>,
+        input_count: usize,
+        async_checks: &mut FuturesUnordered<
+            Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>,
+        >,
+    ) -> Result<(), BoxError> {
+        // feed all of the inputs to the script and shielded verifiers
+        // the script_verifier also checks transparent sighashes, using its own implementation
+        let cached_ffi_transaction =
+            Arc::new(CachedFfiTransaction::new(request.transaction().clone()));
+
+        for input_index in 0..input_count {
+            let rsp = script_verifier.ready_and().await?.call(script::Request {
+                upgrade,
+                known_utxos: request.known_utxos().clone(),
+                cached_ffi_transaction: cached_ffi_transaction.clone(),
+                input_index,
+            });
+
+            async_checks.push(rsp);
+        }
+
+        Ok(())
     }
 }
