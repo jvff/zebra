@@ -240,7 +240,7 @@ fn mock_gossiped_peers(last_seen_times: impl IntoIterator<Item = DateTime<Utc>>)
 
 /// Create a mock `PeerSet` service that checks that requests to it are rate limited.
 ///
-/// The function also returns an atomic counter, that can be used for checking how many times the
+/// The function also returns a call count watcher, that can be used for checking how many times the
 /// service was called.
 fn mock_peer_service<E>() -> (
     impl Service<
