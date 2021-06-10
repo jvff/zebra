@@ -168,11 +168,10 @@ where
                         inputs,
                         joinsplit_data,
                         sapling_shielded_data,
-                    ).await
+                    )
+                    .await
                 }
-                Transaction::V5 { .. } => {
-                    unimplemented!("v5 transaction validation as specified in ZIP-216, ZIP-224, ZIP-225, and ZIP-244")
-                }
+                Transaction::V5 { .. } => Self::verify_v5_transaction().await,
             }
         }
         .instrument(span)
@@ -386,5 +385,11 @@ where
         }
 
         Ok(())
+    }
+
+    async fn verify_v5_transaction() -> Result<transaction::Hash, TransactionError> {
+        unimplemented!(
+            "v5 transaction validation as specified in ZIP-216, ZIP-224, ZIP-225, and ZIP-244"
+        );
     }
 }
