@@ -6,6 +6,7 @@ use crate::block;
 use crate::parameters::{Network, Network::*};
 
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::{self, Display, Formatter};
 use std::ops::Bound::*;
 
 use chrono::{DateTime, Duration, Utc};
@@ -14,7 +15,7 @@ use chrono::{DateTime, Duration, Utc};
 ///
 /// Network upgrades can change the Zcash network protocol or consensus rules in
 /// incompatible ways.
-#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum NetworkUpgrade {
     /// The Zcash protocol for a Genesis block.
     ///
@@ -307,6 +308,23 @@ impl NetworkUpgrade {
             .iter()
             .find(|id| id.1 == ConsensusBranchId(branch_id))
             .map(|nu| nu.0)
+    }
+}
+
+impl Display for NetworkUpgrade {
+    fn fmt(&self, formatter: &mut Formatter) -> fmt::Result {
+        let name = match self {
+            NetworkUpgrade::Genesis => "Genesis",
+            NetworkUpgrade::BeforeOverwinter => "before Overwinter",
+            NetworkUpgrade::Overwinter => "Overwinter",
+            NetworkUpgrade::Sapling => "Sapling",
+            NetworkUpgrade::Blossom => "Blossom",
+            NetworkUpgrade::Heartwood => "Heartwood",
+            NetworkUpgrade::Canopy => "Canopy",
+            NetworkUpgrade::Nu5 => "NU5",
+        };
+
+        name.fmt(formatter)
     }
 }
 
