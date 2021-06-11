@@ -47,7 +47,7 @@ pub enum TransactionError {
     #[error("transaction version number MUST be >= 4")]
     WrongVersion,
 
-    #[error("transaction version {0} not supported by the network upgrade {1}")]
+    #[error("transaction version {0} not supported by the network upgrade {1:?}")]
     UnsupportedByNetworkUpgrade(usize, zebra_chain::parameters::NetworkUpgrade),
 
     #[error("must have at least one input: transparent, shielded spend, or joinsplit")]
