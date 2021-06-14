@@ -167,30 +167,35 @@ fn v5_coinbase_transaction_with_enable_spends_flag_fails_validation() {
 
 #[tokio::test]
 async fn v5_transaction_is_rejected_before_nu5_activation() {
-    let network = Network::Mainnet;
-    let blocks = zebra_test::vectors::MAINNET_BLOCKS.iter();
     let canopy = NetworkUpgrade::Canopy;
+    let networks = vec![
+        (Network::Mainnet, zebra_test::vectors::MAINNET_BLOCKS.iter()),
+        (Network::Testnet, zebra_test::vectors::TESTNET_BLOCKS.iter()),
+    ];
 
-    let state_service = service_fn(|_| async { unreachable!("Service should not be called") });
-    let script_verifier = script::Verifier::new(state_service);
-    let verifier = Verifier::new(network, script_verifier);
+    for (network, blocks) in networks {
+        let state_service = service_fn(|_| async { unreachable!("Service should not be called") });
+        let script_verifier = script::Verifier::new(state_service);
+        let verifier = Verifier::new(network, script_verifier);
 
-    let transaction = fake_v5_transactions_for_network(network, blocks)
-        .next()
-        .expect("At least one fake V5 transaction in the test vectors");
+        let transaction = fake_v5_transactions_for_network(network, blocks)
+            .rev()
+            .next()
+            .expect("At least one fake V5 transaction in the test vectors");
 
-    let result = verifier
-        .oneshot(Request::Block {
-            transaction: Arc::new(transaction),
-            known_utxos: Arc::new(HashMap::new()),
-            height: canopy
-                .activation_height(network)
-                .expect("Canopy activation height is specified"),
-        })
-        .await;
+        let result = verifier
+            .oneshot(Request::Block {
+                transaction: Arc::new(transaction),
+                known_utxos: Arc::new(HashMap::new()),
+                height: canopy
+                    .activation_height(network)
+                    .expect("Canopy activation height is specified"),
+            })
+            .await;
 
-    assert_eq!(
-        result,
-        Err(TransactionError::UnsupportedByNetworkUpgrade(5, canopy))
-    );
+        assert_eq!(
+            result,
+            Err(TransactionError::UnsupportedByNetworkUpgrade(5, canopy))
+        );
+    }
 }
