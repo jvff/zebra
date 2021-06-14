@@ -144,10 +144,8 @@ where
         let span = tracing::debug_span!("tx", hash = %tx.hash());
 
         async move {
-            let tx = req.transaction();
-
             tracing::trace!(?tx);
-            match &**tx {
+            match tx.as_ref() {
                 Transaction::V1 { .. } | Transaction::V2 { .. } | Transaction::V3 { .. } => {
                     tracing::debug!(?tx, "got transaction with wrong version");
                     Err(TransactionError::WrongVersion)
@@ -219,7 +217,7 @@ where
             for input_index in 0..inputs.len() {
                 let rsp = script_verifier.ready_and().await?.call(script::Request {
                     upgrade,
-                    known_utxos: request.known_utxos().clone(),
+                    known_utxos: request.known_utxos(),
                     cached_ffi_transaction: cached_ffi_transaction.clone(),
                     input_index,
                 });
