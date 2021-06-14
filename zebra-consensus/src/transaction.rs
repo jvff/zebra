@@ -367,7 +367,10 @@ where
         request: Request,
         network: Network,
     ) -> Result<transaction::Hash, TransactionError> {
-        Self::verify_v5_transaction_network_upgrade(request.upgrade(network))?;
+        Self::verify_v5_transaction_network_upgrade(
+            &request.transaction(),
+            request.upgrade(network),
+        )?;
 
         // TODO:
         // - verify transparent pool (#1981)
@@ -380,6 +383,7 @@ where
     }
 
     fn verify_v5_transaction_network_upgrade(
+        transaction: &Transaction,
         upgrade: NetworkUpgrade,
     ) -> Result<(), TransactionError> {
         match upgrade {
@@ -393,9 +397,10 @@ where
             | NetworkUpgrade::Sapling
             | NetworkUpgrade::Blossom
             | NetworkUpgrade::Heartwood
-            | NetworkUpgrade::Canopy => {
-                Err(TransactionError::UnsupportedByNetworkUpgrade(5, upgrade))
-            }
+            | NetworkUpgrade::Canopy => Err(TransactionError::UnsupportedByNetworkUpgrade(
+                transaction.version(),
+                upgrade,
+            )),
         }
     }
 }
