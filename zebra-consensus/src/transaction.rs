@@ -169,7 +169,7 @@ where
                     )
                     .await
                 }
-                Transaction::V5 { .. } => Self::verify_v5_transaction(&req, network).await,
+                Transaction::V5 { .. } => Self::verify_v5_transaction(req, network).await,
             }
         }
         .instrument(span)
@@ -364,7 +364,7 @@ where
     }
 
     async fn verify_v5_transaction(
-        request: &Request,
+        request: Request,
         network: Network,
     ) -> Result<transaction::Hash, TransactionError> {
         Self::verify_v5_transaction_network_upgrade(request.upgrade(network))?;
