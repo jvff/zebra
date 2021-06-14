@@ -167,6 +167,8 @@ fn v5_coinbase_transaction_with_enable_spends_flag_fails_validation() {
 
 #[tokio::test]
 async fn v5_transaction_is_rejected_before_nu5_activation() {
+    const V5_TRANSACTION_VERSION: u32 = 5;
+
     let canopy = NetworkUpgrade::Canopy;
     let networks = vec![
         (Network::Mainnet, zebra_test::vectors::MAINNET_BLOCKS.iter()),
@@ -195,7 +197,10 @@ async fn v5_transaction_is_rejected_before_nu5_activation() {
 
         assert_eq!(
             result,
-            Err(TransactionError::UnsupportedByNetworkUpgrade(5, canopy))
+            Err(TransactionError::UnsupportedByNetworkUpgrade(
+                V5_TRANSACTION_VERSION,
+                canopy
+            ))
         );
     }
 }
