@@ -90,17 +90,17 @@ pub enum Request {
 }
 
 impl Request {
-    pub fn transaction(&self) -> &Arc<Transaction> {
+    pub fn transaction(&self) -> Arc<Transaction> {
         match self {
-            Request::Block { transaction, .. } => transaction,
-            Request::Mempool { transaction, .. } => transaction,
+            Request::Block { transaction, .. } => transaction.clone(),
+            Request::Mempool { transaction, .. } => transaction.clone(),
         }
     }
 
-    pub fn known_utxos(&self) -> &Arc<HashMap<transparent::OutPoint, zs::Utxo>> {
+    pub fn known_utxos(&self) -> Arc<HashMap<transparent::OutPoint, zs::Utxo>> {
         match self {
-            Request::Block { known_utxos, .. } => known_utxos,
-            Request::Mempool { known_utxos, .. } => known_utxos,
+            Request::Block { known_utxos, .. } => known_utxos.clone(),
+            Request::Mempool { known_utxos, .. } => known_utxos.clone(),
         }
     }
 
