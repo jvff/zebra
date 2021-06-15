@@ -264,7 +264,7 @@ async fn transaction_is_rejected_based_on_script() {
         .rev()
         .find(|transaction| {
             !transaction.is_coinbase()
-                && transaction.inputs().len() > 0
+                && transaction.inputs().is_empty()
                 && transaction.joinsplit_count() == 0
                 && transaction.sapling_spends_per_anchor().next().is_none()
                 && transaction.sapling_outputs().next().is_none()
