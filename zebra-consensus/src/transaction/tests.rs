@@ -246,7 +246,7 @@ async fn v5_transaction_is_accepted_after_nu5_activation() {
 // TODO: Remove `should_panic` once the NU5 activation heights for testnet and mainnet have been
 // defined.
 #[should_panic]
-async fn transaction_is_rejected_based_on_script() {
+async fn v5_transaction_is_rejected_based_on_script() {
     let network = Network::Mainnet;
     let blocks = zebra_test::vectors::MAINNET_BLOCKS.iter();
 
