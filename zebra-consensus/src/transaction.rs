@@ -341,12 +341,7 @@ where
             // async_checks.push(rsp);
         }
 
-        // Finally, wait for all asynchronous checks to complete
-        // successfully, or fail verification if they error.
-        while let Some(check) = async_checks.next().await {
-            tracing::trace!(?check, remaining = async_checks.len());
-            check?;
-        }
+        Self::wait_for_checks(async_checks).await?;
 
         Ok(tx.hash())
     }
@@ -430,5 +425,18 @@ where
 
             Ok(script_checks)
         }
+    }
+
+    async fn wait_for_checks(
+        mut checks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>,
+    ) -> Result<(), TransactionError> {
+        // Wait for all asynchronous checks to complete
+        // successfully, or fail verification if they error.
+        while let Some(check) = checks.next().await {
+            tracing::trace!(?check, remaining = checks.len());
+            check?;
+        }
+
+        Ok(())
     }
 }
