@@ -355,11 +355,12 @@ where
         inputs: &[transparent::Input],
     ) -> Result<transaction::Hash, TransactionError> {
         let mut async_checks = FuturesUnordered::new();
+        let transaction = request.transaction();
 
-        Self::verify_v5_transaction_network_upgrade(
-            &request.transaction(),
-            request.upgrade(network),
-        )?;
+        Self::verify_v5_transaction_network_upgrade(&transaction, request.upgrade(network))?;
+
+        // Do basic checks first
+        check::has_inputs_and_outputs(&transaction)?;
 
         async_checks.extend(Self::verify_transparent_inputs_and_outputs(
             &request,
