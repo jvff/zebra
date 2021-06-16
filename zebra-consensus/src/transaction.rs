@@ -145,6 +145,10 @@ where
 
         async move {
             tracing::trace!(?tx);
+
+            // Do basic checks first
+            check::has_inputs_and_outputs(&tx)?;
+
             match tx.as_ref() {
                 Transaction::V1 { .. } | Transaction::V2 { .. } | Transaction::V3 { .. } => {
                     tracing::debug!(?tx, "got transaction with wrong version");
@@ -204,9 +208,6 @@ where
 
         let tx = request.transaction();
         let upgrade = request.upgrade(network);
-
-        // Do basic checks first
-        check::has_inputs_and_outputs(&tx)?;
 
         // Add asynchronous checks of the transparent inputs and outputs
         async_checks.extend(Self::verify_transparent_inputs_and_outputs(
@@ -358,9 +359,6 @@ where
         let transaction = request.transaction();
 
         Self::verify_v5_transaction_network_upgrade(&transaction, request.upgrade(network))?;
-
-        // Do basic checks first
-        check::has_inputs_and_outputs(&transaction)?;
 
         async_checks.extend(Self::verify_transparent_inputs_and_outputs(
             &request,
