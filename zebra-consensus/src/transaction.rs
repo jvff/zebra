@@ -31,6 +31,9 @@ mod check;
 #[cfg(test)]
 mod tests;
 
+/// An alias for a set of asynchronous checks that should succeed.
+type AsyncChecks = FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>;
+
 /// Asynchronous transaction verification.
 #[derive(Debug, Clone)]
 pub struct Verifier<ZS> {
@@ -407,10 +410,7 @@ where
         network: Network,
         inputs: &[transparent::Input],
         script_verifier: script::Verifier<ZS>,
-    ) -> Result<
-        FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>,
-        TransactionError,
-    > {
+    ) -> Result<AsyncChecks, TransactionError> {
         let transaction = request.transaction();
 
         if transaction.is_coinbase() {
@@ -442,9 +442,7 @@ where
         }
     }
 
-    async fn wait_for_checks(
-        mut checks: FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>,
-    ) -> Result<(), TransactionError> {
+    async fn wait_for_checks(mut checks: AsyncChecks) -> Result<(), TransactionError> {
         // Wait for all asynchronous checks to complete
         // successfully, or fail verification if they error.
         while let Some(check) = checks.next().await {
