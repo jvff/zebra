@@ -378,6 +378,23 @@ where
         Ok(async_checks)
     }
 
+    /// Verify a V5 transaction.
+    ///
+    /// Returns a set of asynchronous checks that must all succeed for the transaction to be
+    /// considered valid. These checks include:
+    ///
+    /// - transaction support by the considered network upgrade (see [`Request::upgrade`])
+    /// - transparent transfers
+    /// - sapling shielded data (TODO)
+    /// - orchard shielded data (TODO)
+    ///
+    /// The parameters of this method are:
+    ///
+    /// - the `request` to verify (that contains the transaction and other metadata, see [`Request`]
+    ///   for more information)
+    /// - the `network` to consider when verifying
+    /// - the `script_verifier` to use for verifying the transparent transfers
+    /// - the transparent `inputs` in the transaction
     fn verify_v5_transaction(
         request: Request,
         network: Network,
