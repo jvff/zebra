@@ -31,6 +31,9 @@ mod check;
 #[cfg(test)]
 mod tests;
 
+/// An alias for a set of asynchronous checks that should succeed.
+type AsyncChecks = FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>;
+
 /// Asynchronous transaction verification.
 #[derive(Debug, Clone)]
 pub struct Verifier<ZS> {
