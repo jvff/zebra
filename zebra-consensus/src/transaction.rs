@@ -372,7 +372,6 @@ where
         Self::wait_for_checks(async_checks).await?;
 
         // TODO:
-        // - verify transparent pool (#1981)
         // - verify sapling shielded pool (#1981)
         // - verify orchard shielded pool (ZIP-224) (#2105)
         // - ZIP-216 (#1798)
