@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 
 use tower::{service_fn, ServiceExt};
 
@@ -13,7 +13,7 @@ use zebra_chain::{
 
 use super::{check, Request, Verifier};
 
-use crate::{error::TransactionError, script, BoxError};
+use crate::{error::TransactionError, script};
 use color_eyre::eyre::Report;
 
 #[test]
@@ -240,51 +240,4 @@ async fn v5_transaction_is_accepted_after_nu5_activation() {
 
         assert_eq!(result, Ok(expected_hash));
     }
-}
-
-/// Test if V5 transaction is rejected if script verifier returns an error.
-///
-/// This test simulates the case where the script verifier rejects the transaction by forcing it to
-/// return an error. To do so, a fake error is returned to the script verifier by the state service
-/// when an unspent transaction output is requested.
-#[tokio::test]
-// TODO: Remove `should_panic` once the NU5 activation heights for testnet and mainnet have been
-// defined.
-#[should_panic]
-async fn v5_transaction_is_rejected_based_on_script() {
-    let network = Network::Mainnet;
-    let blocks = zebra_test::vectors::MAINNET_BLOCKS.iter();
-
-    let state_service = service_fn(|_| async {
-        Err(Box::new(io::Error::new(
-            io::ErrorKind::Other,
-            "A fake error for the script verifier to forward to the transaction verifier",
-        )) as BoxError)
-    });
-
-    let script_verifier = script::Verifier::new(state_service);
-    let verifier = Verifier::new(network, script_verifier);
-
-    let transaction = fake_v5_transactions_for_network(network, blocks)
-        .rev()
-        .find(|transaction| {
-            !transaction.is_coinbase()
-                && transaction.inputs().is_empty()
-                && transaction.joinsplit_count() == 0
-                && transaction.sapling_spends_per_anchor().next().is_none()
-                && transaction.sapling_outputs().next().is_none()
-        })
-        .expect("At least one fake V5 coinbase transaction in the test vectors");
-
-    let result = verifier
-        .oneshot(Request::Block {
-            transaction: Arc::new(transaction),
-            known_utxos: Arc::new(HashMap::new()),
-            height: NetworkUpgrade::Nu5
-                .activation_height(network)
-                .expect("NU5 activation height is specified"),
-        })
-        .await;
-
-    assert!(result.is_err());
 }
