@@ -201,6 +201,24 @@ where
     ZS: Service<zs::Request, Response = zs::Response, Error = BoxError> + Send + Clone + 'static,
     ZS::Future: Send + 'static,
 {
+    /// Verify a V4 transaction.
+    ///
+    /// Returns a set of asynchronous checks that must all succeed for the transaction to be
+    /// considered valid. These checks include:
+    ///
+    /// - transparent transfers
+    /// - sprout shielded data
+    /// - sapling shielded data
+    ///
+    /// The parameters of this method are:
+    ///
+    /// - the `request` to verify (that contains the transaction and other metadata, see [`Request`]
+    ///   for more information)
+    /// - the `network` to consider when verifying
+    /// - the `script_verifier` to use for verifying the transparent transfers
+    /// - the transparent `inputs` in the transaction
+    /// - the Sprout `joinsplit_data` shielded data in the transaction
+    /// - the `sapling_shielded_data` in the transaction
     async fn verify_v4_transaction(
         request: Request,
         network: Network,
