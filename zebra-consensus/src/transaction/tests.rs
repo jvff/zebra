@@ -258,7 +258,7 @@ async fn v5_transaction_is_rejected_based_on_script() {
     let state_service = service_fn(|_| async {
         Err(Box::new(io::Error::new(
             io::ErrorKind::Other,
-            "Pretending the UTXO was not found",
+            "A fake error for the script verifier to forward to the transaction verifier",
         )) as BoxError)
     });
 
