@@ -242,6 +242,11 @@ async fn v5_transaction_is_accepted_after_nu5_activation() {
     }
 }
 
+/// Test if V5 transaction is rejected if script verifier returns an error.
+///
+/// This test simulates the case where the script verifier rejects the transaction by forcing it to
+/// return an error. To do so, a fake error is returned to the script verifier by the state service
+/// when an unspent transaction output is requested.
 #[tokio::test]
 // TODO: Remove `should_panic` once the NU5 activation heights for testnet and mainnet have been
 // defined.
