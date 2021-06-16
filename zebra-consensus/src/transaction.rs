@@ -93,6 +93,7 @@ pub enum Request {
 }
 
 impl Request {
+    /// The transaction to verify that's in this request.
     pub fn transaction(&self) -> Arc<Transaction> {
         match self {
             Request::Block { transaction, .. } => transaction.clone(),
@@ -100,6 +101,7 @@ impl Request {
         }
     }
 
+    /// The set of additional known unspent transaction outputs that's in this request.
     pub fn known_utxos(&self) -> Arc<HashMap<transparent::OutPoint, zs::Utxo>> {
         match self {
             Request::Block { known_utxos, .. } => known_utxos.clone(),
@@ -107,6 +109,10 @@ impl Request {
         }
     }
 
+    /// The network upgrade to consider for the verification.
+    ///
+    /// This is specified either explicitly in a request to verify a mempool transaction, or based
+    /// on the block height specified in a request to validate a transaction in a block.
     pub fn upgrade(&self, network: Network) -> NetworkUpgrade {
         match self {
             Request::Block { height, .. } => NetworkUpgrade::current(network, *height),
