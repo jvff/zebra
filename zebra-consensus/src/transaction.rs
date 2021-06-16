@@ -422,6 +422,7 @@ where
         unimplemented!("V5 transaction validation is not yet complete");
     }
 
+    /// Verifies if a V5 `transaction` is supported by the network `upgrade`.
     fn verify_v5_transaction_network_upgrade(
         transaction: &Transaction,
         upgrade: NetworkUpgrade,
