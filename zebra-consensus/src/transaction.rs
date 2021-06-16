@@ -484,6 +484,10 @@ where
         }
     }
 
+    /// Await a set of checks that should all succeed.
+    ///
+    /// If any of the checks fail, this method immediately returns the error and cancels all other
+    /// checks by dropping them.
     async fn wait_for_checks(mut checks: AsyncChecks) -> Result<(), TransactionError> {
         // Wait for all asynchronous checks to complete
         // successfully, or fail verification if they error.
