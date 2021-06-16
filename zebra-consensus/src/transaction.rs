@@ -445,6 +445,8 @@ where
         }
     }
 
+    /// Verifies if a transaction's transparent `inputs` are valid using the provided
+    /// `script_verifier`.
     fn verify_transparent_inputs_and_outputs(
         request: &Request,
         network: Network,
