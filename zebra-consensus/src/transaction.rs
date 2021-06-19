@@ -182,7 +182,7 @@ where
                     .await?
                 }
                 Transaction::V5 { inputs, .. } => {
-                    Self::verify_v5_transaction(req, network, script_verifier, inputs)?
+                    Self::verify_v5_transaction(req, network, script_verifier, inputs).await?
                 }
             };
 
@@ -394,7 +394,7 @@ where
     /// - the `network` to consider when verifying
     /// - the `script_verifier` to use for verifying the transparent transfers
     /// - the transparent `inputs` in the transaction
-    fn verify_v5_transaction(
+    async fn verify_v5_transaction(
         request: Request,
         network: Network,
         script_verifier: script::Verifier<ZS>,
