@@ -234,7 +234,7 @@ where
 
         // A set of asynchronous checks which must all succeed.
         // We finish by waiting on these below.
-        let mut async_checks = FuturesUnordered::new();
+        let mut async_checks = AsyncChecks::new();
 
         let tx = request.transaction();
         let upgrade = request.upgrade(network);
@@ -457,7 +457,7 @@ where
         if transaction.is_coinbase() {
             check::coinbase_tx_no_prevout_joinsplit_spend(&transaction)?;
 
-            Ok(FuturesUnordered::new())
+            Ok(AsyncChecks::new())
         } else {
             // feed all of the inputs to the script and shielded verifiers
             // the script_verifier also checks transparent sighashes, using its own implementation
