@@ -712,20 +712,17 @@ where
                 }
 
                 // All transaction `network_upgrade` fields must be consistent with the block height.
-                if block
+                block
                     .check_transaction_network_upgrade_consistency(network)
-                    .is_err()
-                {
-                    return Err("inconsistent network upgrade found in transaction".into());
-                }
+                    .map_err(|_| "inconsistent network upgrade found in transaction")?;
 
                 // If we find at least one transaction with a `network_upgrade` field we are ok.
-                let network_upgrades: Vec<NetworkUpgrade> = block
+                let has_network_upgrade = block
                     .transactions
                     .iter()
-                    .filter_map(|trans| trans.network_upgrade())
-                    .collect();
-                if !network_upgrades.is_empty() {
+                    .find_map(|trans| trans.network_upgrade())
+                    .is_some();
+                if has_network_upgrade {
                     return Ok(());
                 }
             }
