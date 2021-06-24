@@ -117,6 +117,13 @@ impl Duration32 {
     /// The latest possible `Duration32` value.
     pub const MAX: Duration32 = Duration32 { seconds: u32::MAX };
 
+    /// Creates a new [`Duration32`] to represent the given amount of hours.
+    pub const fn from_hours(hours: u32) -> Self {
+        Duration32 {
+            seconds: hours * 60 /* min */ * 60, /* s */
+        }
+    }
+
     /// Returns the number of seconds in this duration.
     pub fn seconds(&self) -> u32 {
         self.seconds
