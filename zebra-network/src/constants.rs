@@ -8,7 +8,7 @@ use regex::Regex;
 // XXX should these constants be split into protocol also?
 use crate::protocol::external::types::*;
 
-use zebra_chain::parameters::NetworkUpgrade;
+use zebra_chain::{parameters::NetworkUpgrade, serialization::Duration32};
 
 /// The buffer size for the peer set.
 ///
@@ -44,6 +44,9 @@ pub const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(4);
 /// connector actually setting up channels and these heartbeats in a
 /// specific manner that matches up with this math.
 pub const LIVE_PEER_DURATION: Duration = Duration::from_secs(60 + 20 + 20 + 20);
+
+/// The maximum duration since a peer was last seen to consider it reachable.
+pub const REACHABLE_PEER_DURATION: Duration32 = Duration32::from_hours(3);
 
 /// Regular interval for sending keepalive `Ping` messages to each
 /// connected peer.
