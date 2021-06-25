@@ -162,6 +162,10 @@ impl AddressBook {
             // Security: remove peers that:
             //   - last responded more than three hours ago, or
             //   - haven't responded yet but were reported last seen more than three hours ago
+            //
+            // This prevents Zebra from gossiping nodes that are likely unreachable. Gossiping such
+            // nodes impacts the network health, because connection attempts end up being wasted on
+            // peers that are less likely to respond.
             .filter(MetaAddr::was_recently_reachable)
             .collect::<Vec<_>>();
         peers.shuffle(&mut rand::thread_rng());
