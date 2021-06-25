@@ -151,3 +151,31 @@ fn recently_responded_peer_is_recently_reachable() {
 
     assert!(peer.was_recently_reachable());
 }
+
+/// Test that peer that last responded in the reachable interval is recently reachable.
+#[test]
+fn not_so_recently_responded_peer_is_still_recently_reachable() {
+    zebra_test::init();
+
+    let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
+    let peer_seed = MetaAddr::new_alternate(&address, &PeerServices::NODE_NETWORK)
+        .into_new_meta_addr()
+        .expect("MetaAddrChange can't create a new MetaAddr");
+
+    // Create a peer that has responded
+    let mut peer = MetaAddr::new_responded(&address, &PeerServices::NODE_NETWORK)
+        .apply_to_meta_addr(peer_seed)
+        .expect("Failed to create MetaAddr for responded peer");
+
+    // Tweak the peer's last response time to be within the limits of the reachable duration
+    let offset = REACHABLE_PEER_DURATION
+        .checked_sub(TEST_TIME_ERROR_MARGIN)
+        .expect("Test margin is too large");
+    let last_response = DateTime32::now()
+        .checked_sub(offset)
+        .expect("Offset is too large");
+
+    peer.set_last_response(last_response);
+
+    assert!(peer.was_recently_reachable());
+}
