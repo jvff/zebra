@@ -12,7 +12,7 @@ use tracing::Span;
 
 use zebra_chain::serialization::canonical_socket_addr;
 
-use crate::{constants, meta_addr::MetaAddrChange, types::MetaAddr, PeerAddrState};
+use crate::{meta_addr::MetaAddrChange, types::MetaAddr, PeerAddrState};
 
 /// A database of peer listener addresses, their advertised services, and
 /// information on when they were last seen.
@@ -159,22 +159,10 @@ impl AddressBook {
         let mut peers = peers
             .values()
             .filter_map(MetaAddr::sanitize)
-            .filter(|address| {
-                // Security: remove peers that:
-                //   - last responded more than three hours ago, or
-                //   - haven't responded yet but were reported last seen more than three hours ago
-                address
-                    .last_seen()
-                    // Correctness: the last seen shouldn't ever be in the future, either because
-                    // we set the time or because another peer's future time was sanitized when it
-                    // was added to the address book
-                    .map(|last_seen| {
-                        last_seen.saturating_elapsed() < constants::REACHABLE_PEER_DURATION
-                    })
-                    // Correctness: remove peers that haven't been seen or reported to have been
-                    // seen
-                    .unwrap_or(false)
-            })
+            // Security: remove peers that:
+            //   - last responded more than three hours ago, or
+            //   - haven't responded yet but were reported last seen more than three hours ago
+            .filter(MetaAddr::was_recently_reachable)
             .collect::<Vec<_>>();
         peers.shuffle(&mut rand::thread_rng());
         peers
