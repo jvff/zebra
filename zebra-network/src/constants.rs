@@ -46,6 +46,12 @@ pub const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(4);
 pub const LIVE_PEER_DURATION: Duration = Duration::from_secs(60 + 20 + 20 + 20);
 
 /// The maximum duration since a peer was last seen to consider it reachable.
+///
+/// This is determined as a tradeoff between network health and network view leakage. From the
+/// [Bitcoin protocol documentation](https://en.bitcoin.it/wiki/Protocol_documentation#getaddr):
+///
+/// "The typical presumption is that a node is likely to be active if it has been sending a message
+/// within the last three hours."
 pub const REACHABLE_PEER_DURATION: Duration32 = Duration32::from_hours(3);
 
 /// Regular interval for sending keepalive `Ping` messages to each
