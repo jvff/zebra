@@ -95,3 +95,23 @@ fn gossiped_peer_reportedly_seen_in_the_future_is_recently_reachable() {
 
     assert!(peer.was_recently_reachable());
 }
+
+/// Test gossiped peer that is not recently reachable.
+#[test]
+fn gossiped_peer_reportedly_seen_long_ago_is_not_recently_reachable() {
+    zebra_test::init();
+
+    let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
+
+    // Report last seen just outside the reachable interval.
+    let offset = REACHABLE_PEER_DURATION
+        .checked_add(TEST_TIME_ERROR_MARGIN)
+        .expect("Test margin is too large");
+    let last_seen = DateTime32::now()
+        .checked_sub(offset)
+        .expect("Offset is too large");
+
+    let peer = MetaAddr::new_gossiped_meta_addr(address, PeerServices::NODE_NETWORK, last_seen);
+
+    assert!(!peer.was_recently_reachable());
+}
