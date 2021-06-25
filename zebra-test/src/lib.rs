@@ -11,6 +11,7 @@
 #![recursion_limit = "256"]
 
 use color_eyre::section::PanicMessage;
+use once_cell::sync::Lazy;
 use owo_colors::OwoColorize;
 use tracing_error::ErrorLayer;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -23,6 +24,14 @@ pub mod net;
 pub mod prelude;
 pub mod transcript;
 pub mod vectors;
+
+/// A Tokio runtime that can be shared between tests.
+pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime")
+});
 
 static INIT: Once = Once::new();
 
