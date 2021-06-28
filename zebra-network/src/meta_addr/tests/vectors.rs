@@ -46,9 +46,12 @@ fn sanitize_extremes() {
     }
 }
 
-/// Test if new peer is not recently reachable.
+/// Test if a recently received alternate peer address is not recently reachable.
+///
+/// Such [`MetaAddr`] is only considered reachable after Zebra has tried to connect to it and
+/// confirmed that the address is reachable.
 #[test]
-fn new_peer_is_not_recently_reachable() {
+fn new_alternate_peer_address_is_not_recently_reachable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
