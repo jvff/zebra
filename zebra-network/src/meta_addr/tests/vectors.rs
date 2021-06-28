@@ -46,6 +46,21 @@ fn sanitize_extremes() {
     }
 }
 
+/// Test if a newly created local listening address is recently reachable.
+///
+/// The local listener [`MetaAddr`] is always considered reachable.
+#[test]
+fn new_local_listener_is_not_recently_reachable() {
+    zebra_test::init();
+
+    let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
+    let peer = MetaAddr::new_local_listener_change(&address)
+        .into_new_meta_addr()
+        .expect("MetaAddrChange can't create a new MetaAddr");
+
+    assert!(peer.was_recently_reachable());
+}
+
 /// Test if a recently received alternate peer address is not recently reachable.
 ///
 /// Such [`MetaAddr`] is only considered reachable after Zebra has tried to connect to it and
