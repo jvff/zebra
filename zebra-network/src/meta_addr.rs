@@ -470,7 +470,7 @@ impl MetaAddr {
             // Correctness: `last_seen` shouldn't ever be in the future, either because we set the
             // time or because another peer's future time was sanitized when it was added to the
             // address book
-            last_seen.saturating_elapsed() < constants::REACHABLE_PEER_DURATION
+            last_seen.saturating_elapsed() <= constants::REACHABLE_PEER_DURATION
         } else {
             // Peer has never responded and does not have a gossiped last seen time
             false
