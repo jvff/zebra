@@ -46,11 +46,11 @@ fn sanitize_extremes() {
     }
 }
 
-/// Test if a newly created local listening address is recently reachable.
+/// Test if a newly created local listening address is gossipable.
 ///
 /// The local listener [`MetaAddr`] is always considered reachable.
 #[test]
-fn new_local_listener_is_not_recently_reachable() {
+fn new_local_listener_is_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -61,12 +61,12 @@ fn new_local_listener_is_not_recently_reachable() {
     assert!(peer.is_active_for_gossip());
 }
 
-/// Test if a recently received alternate peer address is not recently reachable.
+/// Test if a recently received alternate peer address is not gossipable.
 ///
 /// Such [`MetaAddr`] is only considered reachable after Zebra has tried to connect to it and
 /// confirmed that the address is reachable.
 #[test]
-fn new_alternate_peer_address_is_not_recently_reachable() {
+fn new_alternate_peer_address_is_not_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -77,9 +77,9 @@ fn new_alternate_peer_address_is_not_recently_reachable() {
     assert!(!peer.is_active_for_gossip());
 }
 
-/// Test gossiped peer that is recently reachable.
+/// Test if recently received gossiped peer is gossipable.
 #[test]
-fn gossiped_peer_reportedly_to_be_seen_recently_is_recently_reachable() {
+fn gossiped_peer_reportedly_to_be_seen_recently_is_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -97,9 +97,9 @@ fn gossiped_peer_reportedly_to_be_seen_recently_is_recently_reachable() {
     assert!(peer.is_active_for_gossip());
 }
 
-/// Test gossiped peer that was reportedly last seen in the future.
+/// Test if received gossiped peer that was reportedly last seen in the future is gossipable.
 #[test]
-fn gossiped_peer_reportedly_seen_in_the_future_is_recently_reachable() {
+fn gossiped_peer_reportedly_seen_in_the_future_is_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -114,9 +114,9 @@ fn gossiped_peer_reportedly_seen_in_the_future_is_recently_reachable() {
     assert!(peer.is_active_for_gossip());
 }
 
-/// Test gossiped peer that is not recently reachable.
+/// Test if gossiped peer that was reported last seen a long time ago is not gossipable.
 #[test]
-fn gossiped_peer_reportedly_seen_long_ago_is_not_recently_reachable() {
+fn gossiped_peer_reportedly_seen_long_ago_is_not_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -134,9 +134,9 @@ fn gossiped_peer_reportedly_seen_long_ago_is_not_recently_reachable() {
     assert!(!peer.is_active_for_gossip());
 }
 
-/// Test that peer that has just responded is recently reachable.
+/// Test that peer that has just responded is gossipable.
 #[test]
-fn recently_responded_peer_is_recently_reachable() {
+fn recently_responded_peer_is_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -152,9 +152,9 @@ fn recently_responded_peer_is_recently_reachable() {
     assert!(peer.is_active_for_gossip());
 }
 
-/// Test that peer that last responded in the reachable interval is recently reachable.
+/// Test that peer that last responded in the reachable interval is gossipable.
 #[test]
-fn not_so_recently_responded_peer_is_still_recently_reachable() {
+fn not_so_recently_responded_peer_is_still_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
@@ -180,9 +180,9 @@ fn not_so_recently_responded_peer_is_still_recently_reachable() {
     assert!(peer.is_active_for_gossip());
 }
 
-/// Test that peer that responded long ago is not recently reachable.
+/// Test that peer that responded long ago is not gossipable.
 #[test]
-fn responded_long_ago_peer_is_not_recently_reachable() {
+fn responded_long_ago_peer_is_not_gossipable() {
     zebra_test::init();
 
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
