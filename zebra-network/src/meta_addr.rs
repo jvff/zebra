@@ -448,7 +448,7 @@ impl MetaAddr {
     /// Have we recently had a failed connection to this peer?
     ///
     /// Returns `true` if this peer has recently failed.
-    pub fn was_recently_failed(&self) -> bool {
+    pub fn has_connection_recently_failed(&self) -> bool {
         if let Some(last_failure) = self.last_failure {
             // Recent times and future times are considered live
             Instant::now().saturating_duration_since(last_failure) <= constants::LIVE_PEER_DURATION
@@ -482,7 +482,7 @@ impl MetaAddr {
         self.last_known_info_is_valid_for_outbound()
             && !self.has_connection_recently_responded()
             && !self.was_connection_recently_attempted()
-            && !self.was_recently_failed()
+            && !self.has_connection_recently_failed()
     }
 
     /// Is the [`SocketAddr`] we have for this peer valid for outbound
