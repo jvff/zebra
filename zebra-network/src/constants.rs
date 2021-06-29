@@ -55,7 +55,7 @@ pub const MIN_PEER_RECONNECTION_DELAY: Duration = Duration::from_secs(60 + 20 + 
 ///
 /// "The typical presumption is that a node is likely to be active if it has been sending a message
 /// within the last three hours."
-pub const REACHABLE_PEER_DURATION: Duration32 = Duration32::from_hours(3);
+pub const MAX_PEER_ACTIVE_FOR_GOSSIP: Duration32 = Duration32::from_hours(3);
 
 /// Regular interval for sending keepalive `Ping` messages to each
 /// connected peer.

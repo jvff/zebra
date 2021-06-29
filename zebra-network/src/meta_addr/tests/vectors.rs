@@ -5,7 +5,7 @@ use std::net::SocketAddr;
 use zebra_chain::serialization::{DateTime32, Duration32};
 
 use super::{super::MetaAddr, check};
-use crate::{constants::REACHABLE_PEER_DURATION, protocol::types::PeerServices};
+use crate::{constants::MAX_PEER_ACTIVE_FOR_GOSSIP, protocol::types::PeerServices};
 
 /// Margin of error for time-based tests.
 ///
@@ -85,7 +85,7 @@ fn gossiped_peer_reportedly_to_be_seen_recently_is_gossipable() {
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
 
     // Report last seen within the reachable interval.
-    let offset = REACHABLE_PEER_DURATION
+    let offset = MAX_PEER_ACTIVE_FOR_GOSSIP
         .checked_sub(TEST_TIME_ERROR_MARGIN)
         .expect("Test margin is too large");
     let last_seen = DateTime32::now()
@@ -106,7 +106,7 @@ fn gossiped_peer_reportedly_seen_in_the_future_is_gossipable() {
 
     // Report last seen in the future
     let last_seen = DateTime32::now()
-        .checked_add(REACHABLE_PEER_DURATION)
+        .checked_add(MAX_PEER_ACTIVE_FOR_GOSSIP)
         .expect("Reachable peer duration is too large");
 
     let peer = MetaAddr::new_gossiped_meta_addr(address, PeerServices::NODE_NETWORK, last_seen);
@@ -122,7 +122,7 @@ fn gossiped_peer_reportedly_seen_long_ago_is_not_gossipable() {
     let address = SocketAddr::from(([192, 168, 180, 9], 10_000));
 
     // Report last seen just outside the reachable interval.
-    let offset = REACHABLE_PEER_DURATION
+    let offset = MAX_PEER_ACTIVE_FOR_GOSSIP
         .checked_add(TEST_TIME_ERROR_MARGIN)
         .expect("Test margin is too large");
     let last_seen = DateTime32::now()
@@ -168,7 +168,7 @@ fn not_so_recently_responded_peer_is_still_gossipable() {
         .expect("Failed to create MetaAddr for responded peer");
 
     // Tweak the peer's last response time to be within the limits of the reachable duration
-    let offset = REACHABLE_PEER_DURATION
+    let offset = MAX_PEER_ACTIVE_FOR_GOSSIP
         .checked_sub(TEST_TIME_ERROR_MARGIN)
         .expect("Test margin is too large");
     let last_response = DateTime32::now()
@@ -196,7 +196,7 @@ fn responded_long_ago_peer_is_not_gossipable() {
         .expect("Failed to create MetaAddr for responded peer");
 
     // Tweak the peer's last response time to be outside the limits of the reachable duration
-    let offset = REACHABLE_PEER_DURATION
+    let offset = MAX_PEER_ACTIVE_FOR_GOSSIP
         .checked_add(TEST_TIME_ERROR_MARGIN)
         .expect("Test margin is too large");
     let last_response = DateTime32::now()

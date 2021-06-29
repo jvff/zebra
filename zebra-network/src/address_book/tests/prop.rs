@@ -7,7 +7,7 @@ use zebra_chain::serialization::Duration32;
 
 use super::super::AddressBook;
 use crate::{
-    constants::REACHABLE_PEER_DURATION,
+    constants::MAX_PEER_ACTIVE_FOR_GOSSIP,
     meta_addr::{arbitrary::MAX_META_ADDR, MetaAddr},
 };
 
@@ -30,7 +30,7 @@ proptest! {
                 .saturating_elapsed()
                 .saturating_sub(TIME_ERROR_MARGIN);
 
-            prop_assert!(duration_since_last_seen <= REACHABLE_PEER_DURATION);
+            prop_assert!(duration_since_last_seen <= MAX_PEER_ACTIVE_FOR_GOSSIP);
         }
     }
 }
