@@ -467,7 +467,7 @@ impl MetaAddr {
     ///
     /// [`constants::REACHABLE_PEER_DURATION`] represents the maximum time since a peer was seen to
     /// still be considered reachable.
-    pub fn was_recently_reachable(&self) -> bool {
+    pub fn is_active_for_gossip(&self) -> bool {
         if let Some(last_seen) = self.last_seen() {
             // Correctness: `last_seen` shouldn't ever be in the future, either because we set the
             // time or because another peer's future time was sanitized when it was added to the

@@ -169,7 +169,7 @@ impl AddressBook {
             // This prevents Zebra from gossiping nodes that are likely unreachable. Gossiping such
             // nodes impacts the network health, because connection attempts end up being wasted on
             // peers that are less likely to respond.
-            .filter(MetaAddr::was_recently_reachable)
+            .filter(MetaAddr::is_active_for_gossip)
             .collect::<Vec<_>>();
         peers.shuffle(&mut rand::thread_rng());
         peers
