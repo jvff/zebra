@@ -478,7 +478,7 @@ impl MetaAddr {
     }
 
     /// Is this address ready for a new outbound connection attempt?
-    pub fn is_ready_for_attempt(&self) -> bool {
+    pub fn is_ready_for_connection_attempt(&self) -> bool {
         self.last_known_info_is_valid_for_outbound()
             && !self.was_recently_live()
             && !self.was_recently_attempted()
