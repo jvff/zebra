@@ -58,7 +58,7 @@ fn new_local_listener_is_not_recently_reachable() {
         .into_new_meta_addr()
         .expect("MetaAddrChange can't create a new MetaAddr");
 
-    assert!(peer.was_recently_reachable());
+    assert!(peer.is_active_for_gossip());
 }
 
 /// Test if a recently received alternate peer address is not recently reachable.
@@ -74,7 +74,7 @@ fn new_alternate_peer_address_is_not_recently_reachable() {
         .into_new_meta_addr()
         .expect("MetaAddrChange can't create a new MetaAddr");
 
-    assert!(!peer.was_recently_reachable());
+    assert!(!peer.is_active_for_gossip());
 }
 
 /// Test gossiped peer that is recently reachable.
@@ -94,7 +94,7 @@ fn gossiped_peer_reportedly_to_be_seen_recently_is_recently_reachable() {
 
     let peer = MetaAddr::new_gossiped_meta_addr(address, PeerServices::NODE_NETWORK, last_seen);
 
-    assert!(peer.was_recently_reachable());
+    assert!(peer.is_active_for_gossip());
 }
 
 /// Test gossiped peer that was reportedly last seen in the future.
@@ -111,7 +111,7 @@ fn gossiped_peer_reportedly_seen_in_the_future_is_recently_reachable() {
 
     let peer = MetaAddr::new_gossiped_meta_addr(address, PeerServices::NODE_NETWORK, last_seen);
 
-    assert!(peer.was_recently_reachable());
+    assert!(peer.is_active_for_gossip());
 }
 
 /// Test gossiped peer that is not recently reachable.
@@ -131,7 +131,7 @@ fn gossiped_peer_reportedly_seen_long_ago_is_not_recently_reachable() {
 
     let peer = MetaAddr::new_gossiped_meta_addr(address, PeerServices::NODE_NETWORK, last_seen);
 
-    assert!(!peer.was_recently_reachable());
+    assert!(!peer.is_active_for_gossip());
 }
 
 /// Test that peer that has just responded is recently reachable.
@@ -149,7 +149,7 @@ fn recently_responded_peer_is_recently_reachable() {
         .apply_to_meta_addr(peer_seed)
         .expect("Failed to create MetaAddr for responded peer");
 
-    assert!(peer.was_recently_reachable());
+    assert!(peer.is_active_for_gossip());
 }
 
 /// Test that peer that last responded in the reachable interval is recently reachable.
@@ -177,7 +177,7 @@ fn not_so_recently_responded_peer_is_still_recently_reachable() {
 
     peer.set_last_response(last_response);
 
-    assert!(peer.was_recently_reachable());
+    assert!(peer.is_active_for_gossip());
 }
 
 /// Test that peer that responded long ago is not recently reachable.
@@ -205,5 +205,5 @@ fn responded_long_ago_peer_is_not_recently_reachable() {
 
     peer.set_last_response(last_response);
 
-    assert!(!peer.was_recently_reachable());
+    assert!(!peer.is_active_for_gossip());
 }
