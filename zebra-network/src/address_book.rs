@@ -267,7 +267,8 @@ impl AddressBook {
             None => false,
             // NeverAttempted, Failed, and AttemptPending peers should never be live
             Some(peer) => {
-                peer.last_connection_state == PeerAddrState::Responded && peer.was_recently_live()
+                peer.last_connection_state == PeerAddrState::Responded
+                    && peer.has_connection_recently_responded()
             }
         }
     }
