@@ -416,7 +416,7 @@ impl MetaAddr {
     /// connection. Therefore, if the last-seen timestamp is older than
     /// [`constants::LIVE_PEER_DURATION`] ago, we know we should have
     /// disconnected from it. Otherwise, we could potentially be connected to it.
-    pub fn was_recently_live(&self) -> bool {
+    pub fn has_connection_recently_responded(&self) -> bool {
         if let Some(last_response) = self.last_response {
             // Recent times and future times are considered live
             last_response.saturating_elapsed()
@@ -480,7 +480,7 @@ impl MetaAddr {
     /// Is this address ready for a new outbound connection attempt?
     pub fn is_ready_for_connection_attempt(&self) -> bool {
         self.last_known_info_is_valid_for_outbound()
-            && !self.was_recently_live()
+            && !self.has_connection_recently_responded()
             && !self.was_recently_attempted()
             && !self.was_recently_failed()
     }
