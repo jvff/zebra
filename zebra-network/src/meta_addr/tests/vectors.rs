@@ -48,7 +48,7 @@ fn sanitize_extremes() {
 
 /// Test if a newly created local listening address is gossipable.
 ///
-/// The local listener [`MetaAddr`] is always considered reachable.
+/// The local listener [`MetaAddr`] is always considered gossipable.
 #[test]
 fn new_local_listener_is_gossipable() {
     zebra_test::init();
@@ -63,7 +63,7 @@ fn new_local_listener_is_gossipable() {
 
 /// Test if a recently received alternate peer address is not gossipable.
 ///
-/// Such [`MetaAddr`] is only considered reachable after Zebra has tried to connect to it and
+/// Such [`MetaAddr`] is only considered gossipable after Zebra has tried to connect to it and
 /// confirmed that the address is reachable.
 #[test]
 fn new_alternate_peer_address_is_not_gossipable() {
