@@ -302,7 +302,7 @@ impl AddressBook {
         // Skip live peers, and peers pending a reconnect attempt, then sort using BTreeSet
         self.by_addr
             .values()
-            .filter(|peer| peer.is_ready_for_attempt())
+            .filter(|peer| peer.is_ready_for_connection_attempt())
             .collect::<BTreeSet<_>>()
             .into_iter()
             .cloned()
@@ -325,7 +325,7 @@ impl AddressBook {
 
         self.by_addr
             .values()
-            .filter(|peer| !peer.is_ready_for_attempt())
+            .filter(|peer| !peer.is_ready_for_connection_attempt())
             .cloned()
     }
 

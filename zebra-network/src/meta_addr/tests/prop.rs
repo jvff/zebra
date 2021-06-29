@@ -243,7 +243,7 @@ proptest! {
         let mut attempt_count: usize = 0;
 
         for change in changes {
-            while addr.is_ready_for_attempt() {
+            while addr.is_ready_for_connection_attempt() {
                 attempt_count += 1;
                 // Assume that this test doesn't last longer than LIVE_PEER_DURATION
                 prop_assert!(attempt_count <= 1);
@@ -441,7 +441,7 @@ proptest! {
                     let addr = addrs.entry(addr.addr).or_insert(*addr);
                     let change = changes.get(change_index);
 
-                    while addr.is_ready_for_attempt() {
+                    while addr.is_ready_for_connection_attempt() {
                         *attempt_counts.entry(addr.addr).or_default() += 1;
                         assert!(*attempt_counts.get(&addr.addr).unwrap() <= LIVE_PEER_INTERVALS + 1);
 
