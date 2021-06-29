@@ -433,7 +433,7 @@ impl MetaAddr {
     ///
     /// Returns `true` if this peer was recently attempted, or has a connection
     /// attempt in progress.
-    pub fn was_recently_attempted(&self) -> bool {
+    pub fn was_connection_recently_attempted(&self) -> bool {
         if let Some(last_attempt) = self.last_attempt {
             // Recent times and future times are considered live.
             // Instants are monotonic, so `now` should always be later than `last_attempt`,
@@ -481,7 +481,7 @@ impl MetaAddr {
     pub fn is_ready_for_connection_attempt(&self) -> bool {
         self.last_known_info_is_valid_for_outbound()
             && !self.has_connection_recently_responded()
-            && !self.was_recently_attempted()
+            && !self.was_connection_recently_attempted()
             && !self.was_recently_failed()
     }
 
