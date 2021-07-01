@@ -699,8 +699,8 @@ fn v4_with_unsigned_sprout_transfer_is_rejected() {
 }
 
 /// Test if a V4 transaction with Sapling spends is accepted by the verifier.
-#[tokio::test]
-async fn v4_with_sapling_spends() {
+#[test]
+fn v4_with_sapling_spends() {
     zebra_test::init();
     zebra_test::RUNTIME.block_on(async {
         let network = Network::Mainnet;
@@ -736,8 +736,8 @@ async fn v4_with_sapling_spends() {
 }
 
 /// Test if a V4 transaction with Sapling outputs but no spends is accepted by the verifier.
-#[tokio::test]
-async fn v4_with_sapling_outputs_and_no_spends() {
+#[test]
+fn v4_with_sapling_outputs_and_no_spends() {
     zebra_test::init();
     zebra_test::RUNTIME.block_on(async {
         let network = Network::Mainnet;
