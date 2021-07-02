@@ -409,7 +409,7 @@ where
             let ed25519_item =
                 (joinsplit_data.pub_key, joinsplit_data.sig, shielded_sighash).into();
 
-            checks.include(ed25519_verifier.oneshot(ed25519_item));
+            checks.push(ed25519_verifier.oneshot(ed25519_item));
         }
 
         checks
@@ -440,7 +440,7 @@ where
                 // resulting future to our collection of async
                 // checks that (at a minimum) must pass for the
                 // transaction to verify.
-                async_checks.include(
+                async_checks.push(
                     primitives::groth16::SPEND_VERIFIER
                         .clone()
                         .oneshot(primitives::groth16::ItemWrapper::from(&spend).into()),
@@ -455,7 +455,7 @@ where
                 // description while adding the resulting future to
                 // our collection of async checks that (at a
                 // minimum) must pass for the transaction to verify.
-                async_checks.include(
+                async_checks.push(
                     primitives::redjubjub::VERIFIER
                         .clone()
                         .oneshot((spend.rk, spend.spend_auth_sig, shielded_sighash).into()),
@@ -479,7 +479,7 @@ where
                 // the resulting future to our collection of async
                 // checks that (at a minimum) must pass for the
                 // transaction to verify.
-                async_checks.include(
+                async_checks.push(
                     primitives::groth16::OUTPUT_VERIFIER
                         .clone()
                         .oneshot(primitives::groth16::ItemWrapper::from(output).into()),
@@ -504,7 +504,7 @@ where
             }
 
             // TODO: stop ignoring binding signature errors - #1939
-            // async_checks.include(
+            // async_checks.push(
             //     primitives::redjubjub::VERIFIER
             //         .clone()
             //         .oneshot((bvk, sapling_shielded_data.binding_sig, &shielded_sighash).into()),
@@ -526,12 +526,12 @@ impl AsyncChecks {
         AsyncChecks(FuturesUnordered::new())
     }
 
-    /// Include a check in the set.
-    pub fn include(&mut self, check: impl Future<Output = Result<(), BoxError>> + Send + 'static) {
+    /// Push a check into the set.
+    pub fn push(&mut self, check: impl Future<Output = Result<(), BoxError>> + Send + 'static) {
         self.0.push(check.boxed());
     }
 
-    /// Include a set of checks in the set.
+    /// Push a set of checks into the set.
     ///
     /// This method can be daisy-chained.
     pub fn and(mut self, checks: AsyncChecks) -> Self {
