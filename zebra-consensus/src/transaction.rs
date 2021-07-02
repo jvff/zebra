@@ -515,13 +515,13 @@ where
     }
 }
 
-/// A set of asynchronous checks that should succeed.
+/// A set of unordered asynchronous checks that should succeed.
 ///
 /// A wrapper around [`FuturesUnordered`] with some auxiliary methods.
 struct AsyncChecks(FuturesUnordered<Pin<Box<dyn Future<Output = Result<(), BoxError>> + Send>>>);
 
 impl AsyncChecks {
-    /// Create an empty set of asynchronous checks.
+    /// Create an empty set of unordered asynchronous checks.
     pub fn new() -> Self {
         AsyncChecks(FuturesUnordered::new())
     }
