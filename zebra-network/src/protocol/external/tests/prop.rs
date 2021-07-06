@@ -71,9 +71,10 @@ proptest! {
         }
     }
 
-    /// Test if a [`Message`] is not changed after encoding and decoding it.
+    /// Test if a [`Message::{Inv, GetData}`] is not changed after encoding and decoding it.
+    // TODO: Update this test to cover all `Message` variants.
     #[test]
-    fn message_roundtrip(
+    fn inv_and_getdata_message_roundtrip(
         message in prop_oneof!(Message::inv_strategy(), Message::get_data_strategy()),
     ) {
         let mut codec = Codec::builder().finish();
