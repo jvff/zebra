@@ -22,6 +22,7 @@ proptest! {
         let serialization_result = inventory_hash.zcash_serialize(&mut bytes);
 
         prop_assert!(serialization_result.is_ok());
+        prop_assert!(bytes.len() < MAX_INVENTORY_HASH_BYTES);
 
         let deserialized: Result<InventoryHash, _> = bytes.zcash_deserialize_into();
 
