@@ -56,8 +56,18 @@ proptest! {
                 "io error: failed to fill whole buffer"
             );
         } else {
-            // Should succeed
+            // Deserialization should have succeeded
             prop_assert!(deserialized.is_ok());
+
+            // Reserialize inventory hash
+            let mut bytes = Vec::new();
+            let serialization_result = deserialized.unwrap().zcash_serialize(&mut bytes);
+
+            prop_assert!(serialization_result.is_ok());
+
+            // Check that the reserialization produces the same bytes as the input
+            prop_assert!(bytes.len() <= input.len());
+            prop_assert_eq!(&bytes, &input[..bytes.len()]);
         }
     }
 
