@@ -26,7 +26,7 @@ use bitvec::prelude::*;
 use halo2::{arithmetic::FieldExt, pasta::pallas};
 use lazy_static::lazy_static;
 
-use super::{commitment::NoteCommitment, sinsemilla::*};
+use super::sinsemilla::*;
 
 use crate::serialization::{
     serde_helpers, ReadZcashExt, SerializationError, ZcashDeserialize, ZcashSerialize,
@@ -163,12 +163,6 @@ struct NoteCommitmentTree {
     height: u8,
     /// The number of leaves (note commitments) in this tree.
     count: u32,
-}
-
-impl From<Vec<NoteCommitment>> for NoteCommitmentTree {
-    fn from(_values: Vec<NoteCommitment>) -> Self {
-        unimplemented!();
-    }
 }
 
 impl From<Vec<pallas::Base>> for NoteCommitmentTree {
