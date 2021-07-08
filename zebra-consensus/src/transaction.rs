@@ -55,6 +55,10 @@ where
 {
     // XXX: how should this struct be constructed?
     pub fn new(network: Network, script_verifier: script::Verifier<ZS>) -> Self {
+        // There was a discussion that instantiating the verifiers here or externally and passed as
+        // constructor parameters might help with testing:
+        // https://github.com/ZcashFoundation/zebra/issues/2390#issuecomment-870159482
+        //
         // let (spend_verifier, output_verifier, joinsplit_verifier) = todo!();
 
         Self {
