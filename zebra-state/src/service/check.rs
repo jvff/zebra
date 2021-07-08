@@ -112,7 +112,7 @@ pub(crate) fn block_commitment_is_valid_for_chain_history(
             }
         }
         block::Commitment::ChainHistoryBlockTxAuthCommitment(_) => {
-            // TODO: Get auth_hash from block (ZIP-244), e.g.
+            // TODO: Get auth_hash from block (ZIP-244, #2048), e.g.
             // let auth_hash = prepared.block.auth_hash();
             todo!("hash mmr_hash and auth_hash per ZIP-244 and compare")
         }
