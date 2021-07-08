@@ -381,7 +381,7 @@ impl FinalizedState {
 
     /// Returns the history tree for the finalized state.
     pub fn history_tree(&self) -> &HistoryTree {
-        todo!("add history tree to finalized state");
+        todo!("add history tree to finalized state (#2135)");
     }
 
     /// If the database is `ephemeral`, delete it.
