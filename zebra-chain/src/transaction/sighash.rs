@@ -23,6 +23,7 @@ use crate::primitives::zcash_primitives::sighash;
 
 static ZIP143_EXPLANATION: &str = "Invalid transaction version: after Overwinter activation transaction versions 1 and 2 are rejected";
 static ZIP243_EXPLANATION: &str = "Invalid transaction version: after Sapling activation transaction versions 1, 2, and 3 are rejected";
+static V5_TX_TODO: &str = "v5 transaction hash as specified in ZIP-225 and ZIP-244";
 
 const ZCASH_SIGHASH_PERSONALIZATION_PREFIX: &[u8; 12] = b"ZcashSigHash";
 const ZCASH_PREVOUTS_HASH_PERSONALIZATION: &[u8; 16] = b"ZcashPrevoutHash";
@@ -273,9 +274,7 @@ impl<'a> SigHasher<'a> {
             Transaction::V1 { .. } | Transaction::V2 { .. } => unreachable!(ZIP143_EXPLANATION),
             Transaction::V3 { joinsplit_data, .. } => joinsplit_data.is_some(),
             Transaction::V4 { joinsplit_data, .. } => joinsplit_data.is_some(),
-            Transaction::V5 { .. } => {
-                unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244")
-            }
+            Transaction::V5 { .. } => unimplemented!(V5_TX_TODO),
         };
 
         if !has_joinsplits {
@@ -318,9 +317,7 @@ impl<'a> SigHasher<'a> {
                 }
                 (&mut hash).write_all(&<[u8; 32]>::from(jsd.pub_key)[..])?;
             }
-            Transaction::V5 { .. } => {
-                unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244")
-            }
+            Transaction::V5 { .. } => unimplemented!(V5_TX_TODO),
 
             Transaction::V1 { .. }
             | Transaction::V2 { .. }
@@ -460,7 +457,7 @@ impl<'a> SigHasher<'a> {
                 sapling_shielded_data: None,
                 ..
             } => return writer.write_all(&[0; 32]),
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
+            V5 { .. } => unimplemented!(V5_TX_TODO),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
         };
 
@@ -502,7 +499,7 @@ impl<'a> SigHasher<'a> {
                 sapling_shielded_data: None,
                 ..
             } => return writer.write_all(&[0; 32]),
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
+            V5 { .. } => unimplemented!(V5_TX_TODO),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
         };
 
@@ -540,7 +537,7 @@ impl<'a> SigHasher<'a> {
                 Some(s) => s.value_balance,
                 None => Amount::try_from(0).unwrap(),
             },
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
+            V5 { .. } => unimplemented!(V5_TX_TODO),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
         };
 
