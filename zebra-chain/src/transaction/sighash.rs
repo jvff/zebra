@@ -325,9 +325,6 @@ impl<'a> SigHasher<'a> {
                 }
                 (&mut hash).write_all(&<[u8; 32]>::from(jsd.pub_key)[..])?;
             }
-            Transaction::V5 { .. } => {
-                unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244")
-            }
 
             Transaction::V1 { .. }
             | Transaction::V2 { .. }
@@ -338,7 +335,8 @@ impl<'a> SigHasher<'a> {
             | Transaction::V4 {
                 joinsplit_data: None,
                 ..
-            } => unreachable!("already checked transaction kind above"),
+            }
+            | Transaction::V5 { .. } => unreachable!("already checked transaction kind above"),
         };
 
         writer.write_all(hash.finalize().as_ref())
