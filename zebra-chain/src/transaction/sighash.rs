@@ -23,6 +23,8 @@ use crate::primitives::zcash_primitives::sighash;
 
 static ZIP143_EXPLANATION: &str = "Invalid transaction version: after Overwinter activation transaction versions 1 and 2 are rejected";
 static ZIP243_EXPLANATION: &str = "Invalid transaction version: after Sapling activation transaction versions 1, 2, and 3 are rejected";
+static ZIP244_EXPLANATION: &str =
+    "Version 5 transactions are validated using the `librustzcash` crate";
 
 const ZCASH_SIGHASH_PERSONALIZATION_PREFIX: &[u8; 12] = b"ZcashSigHash";
 const ZCASH_PREVOUTS_HASH_PERSONALIZATION: &[u8; 16] = b"ZcashPrevoutHash";
@@ -465,8 +467,8 @@ impl<'a> SigHasher<'a> {
                 sapling_shielded_data: None,
                 ..
             } => return writer.write_all(&[0; 32]),
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
+            V5 { .. } => unreachable!(ZIP244_EXPLANATION),
         };
 
         if sapling_shielded_data.spends().next().is_none() {
@@ -507,8 +509,8 @@ impl<'a> SigHasher<'a> {
                 sapling_shielded_data: None,
                 ..
             } => return writer.write_all(&[0; 32]),
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
+            V5 { .. } => unreachable!(ZIP244_EXPLANATION),
         };
 
         if sapling_shielded_data.outputs().next().is_none() {
@@ -545,8 +547,8 @@ impl<'a> SigHasher<'a> {
                 Some(s) => s.value_balance,
                 None => Amount::try_from(0).unwrap(),
             },
-            V5 { .. } => unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244"),
             V1 { .. } | V2 { .. } | V3 { .. } => unreachable!(ZIP243_EXPLANATION),
+            V5 { .. } => unreachable!(ZIP244_EXPLANATION),
         };
 
         writer.write_all(&value_balance.to_bytes())?;
