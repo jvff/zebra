@@ -271,12 +271,6 @@ impl<'a> SigHasher<'a> {
         writer.write_all(hash.finalize().as_ref())
     }
 
-    /// Hash the JoinSplits in a transaction.
-    ///
-    /// # Panics
-    ///
-    /// If this is called on an unsupported transaction version ([V1][Transaction::V1],
-    /// [V2][Transaction::V2] or [V5][Transaction::V5]).
     pub(super) fn hash_joinsplits<W: io::Write>(&self, mut writer: W) -> Result<(), io::Error> {
         let has_joinsplits = match self.trans {
             Transaction::V1 { .. } | Transaction::V2 { .. } => unreachable!(ZIP143_EXPLANATION),
