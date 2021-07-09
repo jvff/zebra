@@ -43,9 +43,6 @@ mod tests;
 pub struct Verifier<ZS> {
     network: Network,
     script_verifier: script::Verifier<ZS>,
-    // spend_verifier: groth16::Verifier,
-    // output_verifier: groth16::Verifier,
-    // joinsplit_verifier: groth16::Verifier,
 }
 
 impl<ZS> Verifier<ZS>
@@ -53,20 +50,10 @@ where
     ZS: Service<zs::Request, Response = zs::Response, Error = BoxError> + Send + Clone + 'static,
     ZS::Future: Send + 'static,
 {
-    // XXX: how should this struct be constructed?
     pub fn new(network: Network, script_verifier: script::Verifier<ZS>) -> Self {
-        // There was a discussion that instantiating the verifiers here or externally and passed as
-        // constructor parameters might help with testing:
-        // https://github.com/ZcashFoundation/zebra/issues/2390#issuecomment-870159482
-        //
-        // let (spend_verifier, output_verifier, joinsplit_verifier) = todo!();
-
         Self {
             network,
             script_verifier,
-            // spend_verifier,
-            // output_verifier,
-            // joinsplit_verifier,
         }
     }
 }
