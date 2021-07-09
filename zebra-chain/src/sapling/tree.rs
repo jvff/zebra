@@ -15,7 +15,7 @@
 
 use std::{collections::VecDeque, fmt};
 
-use super::commitment::pedersen_hashes::pedersen_hash;
+use super::commitment::{pedersen_hashes::pedersen_hash, NoteCommitment};
 use bitvec::prelude::*;
 use lazy_static::lazy_static;
 
@@ -113,6 +113,12 @@ struct NoteCommitmentTree {
     height: u8,
     /// The number of leaves (note commitments) in this tree.
     count: u32,
+}
+
+impl From<Vec<NoteCommitment>> for NoteCommitmentTree {
+    fn from(_values: Vec<NoteCommitment>) -> Self {
+        unimplemented!();
+    }
 }
 
 impl From<Vec<jubjub::Fq>> for NoteCommitmentTree {
