@@ -276,7 +276,9 @@ impl<'a> SigHasher<'a> {
             Transaction::V1 { .. } | Transaction::V2 { .. } => unreachable!(ZIP143_EXPLANATION),
             Transaction::V3 { joinsplit_data, .. } => joinsplit_data.is_some(),
             Transaction::V4 { joinsplit_data, .. } => joinsplit_data.is_some(),
-            Transaction::V5 { .. } => unreachable!("V5 transactions do not have JoinSplits"),
+            Transaction::V5 { .. } => {
+                unimplemented!("v5 transaction hash as specified in ZIP-225 and ZIP-244")
+            }
         };
 
         if !has_joinsplits {
