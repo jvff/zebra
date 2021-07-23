@@ -59,7 +59,7 @@ type PeerChange = Result<Change<SocketAddr, peer::Client>, BoxError>;
 pub async fn init<S>(
     config: Config,
     inbound_service: S,
-    best_tip_height: BestTipHeight,
+    best_tip_height: impl BestTipHeight + Clone + Send + 'static,
 ) -> (
     Buffer<BoxService<Request, Response, BoxError>, Request>,
     Arc<std::sync::Mutex<AddressBook>>,

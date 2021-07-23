@@ -13,7 +13,6 @@ use tokio::sync::oneshot;
 use tower::{util::BoxService, Service};
 use tracing::instrument;
 use zebra_chain::{
-    best_tip_height::BestTipHeight,
     block::{self, Block},
     parameters::POW_AVERAGING_WINDOW,
     parameters::{Network, NetworkUpgrade},
@@ -23,8 +22,9 @@ use zebra_chain::{
 };
 
 use crate::{
-    request::HashOrHeight, BoxError, CloneError, CommitBlockError, Config, FinalizedBlock,
-    PreparedBlock, Request, Response, ValidateContextError,
+    best_tip_height_receiver::BestTipHeightReceiver, request::HashOrHeight, BoxError, CloneError,
+    CommitBlockError, Config, FinalizedBlock, PreparedBlock, Request, Response,
+    ValidateContextError,
 };
 
 #[cfg(any(test, feature = "proptest-impl"))]
@@ -61,7 +61,7 @@ struct StateService {
     /// Instant tracking the last time `pending_utxos` was pruned
     last_prune: Instant,
     /// The height of the best chain tip.
-    best_tip_height: BestTipHeight,
+    best_tip_height: BestTipHeightReceiver,
 }
 
 impl StateService {
@@ -69,7 +69,7 @@ impl StateService {
 
     pub fn new(config: Config, network: Network) -> Self {
         let (best_tip_height, finalized_tip_height, non_finalized_tip_height) =
-            BestTipHeight::new();
+            BestTipHeightReceiver::new();
 
         let disk = FinalizedState::new(&config, network, finalized_tip_height);
 
@@ -293,7 +293,7 @@ impl StateService {
 
     /// Return a [`watch::Receiver`] to access the best tip height in both finalized and
     /// non-finalized states.
-    pub fn best_tip_height(&self) -> BestTipHeight {
+    pub fn best_tip_height(&self) -> BestTipHeightReceiver {
         self.best_tip_height.clone()
     }
 
@@ -758,7 +758,10 @@ impl Service<Request> for StateService {
 pub fn init(
     config: Config,
     network: Network,
-) -> (BoxService<Request, Response, BoxError>, BestTipHeight) {
+) -> (
+    BoxService<Request, Response, BoxError>,
+    BestTipHeightReceiver,
+) {
     let service = StateService::new(config, network);
     let best_tip_height = service.best_tip_height();
 

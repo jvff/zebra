@@ -17,6 +17,7 @@
 #![deny(clippy::await_holding_lock)]
 #![forbid(unsafe_code)]
 
+mod best_tip_height_receiver;
 mod config;
 pub mod constants;
 mod error;

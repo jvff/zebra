@@ -43,7 +43,7 @@ use super::{Client, ClientRequest, Connection, ErrorSlot, HandshakeError, PeerEr
 /// - launched in a separate task, and
 /// - wrapped in a timeout.
 #[derive(Clone)]
-pub struct Handshake<S> {
+pub struct Handshake<S, B> {
     config: Config,
     inbound_service: S,
     timestamp_collector: mpsc::Sender<MetaAddrChange>,
@@ -53,7 +53,7 @@ pub struct Handshake<S> {
     our_services: PeerServices,
     relay: bool,
     parent_span: Span,
-    best_tip_height: BestTipHeight,
+    best_tip_height: B,
 }
 
 /// The peer address that we are handshaking with.
@@ -295,7 +295,7 @@ impl fmt::Debug for ConnectedAddr {
 }
 
 /// A builder for `Handshake`.
-pub struct Builder<S> {
+pub struct Builder<S, B = ()> {
     config: Option<Config>,
     inbound_service: Option<S>,
     timestamp_collector: Option<mpsc::Sender<MetaAddrChange>>,
@@ -303,10 +303,10 @@ pub struct Builder<S> {
     user_agent: Option<String>,
     relay: Option<bool>,
     inv_collector: Option<broadcast::Sender<(InventoryHash, SocketAddr)>>,
-    best_tip_height: Option<BestTipHeight>,
+    best_tip_height: B,
 }
 
-impl<S> Builder<S>
+impl<S, B> Builder<S, B>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
@@ -364,9 +364,20 @@ where
     }
 
     /// Provide the receiver of the state's best tip height.
-    pub fn with_best_tip_height(mut self, best_tip_height: BestTipHeight) -> Self {
-        self.best_tip_height = Some(best_tip_height);
-        self
+    pub fn with_best_tip_height<B2>(self, best_tip_height: B2) -> Builder<S, B2>
+    where
+        B2: BestTipHeight,
+    {
+        Builder {
+            config: self.config,
+            inbound_service: self.inbound_service,
+            timestamp_collector: self.timestamp_collector,
+            our_services: self.our_services,
+            user_agent: self.user_agent,
+            relay: self.relay,
+            inv_collector: self.inv_collector,
+            best_tip_height,
+        }
     }
 
     /// Whether to request that peers relay transactions to our node.  Optional.
@@ -376,11 +387,18 @@ where
         self.relay = Some(relay);
         self
     }
+}
 
+impl<S, B> Builder<S, B>
+where
+    S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
+    S::Future: Send,
+    B: BestTipHeight,
+{
     /// Consume this builder and produce a [`Handshake`].
     ///
     /// Returns an error only if any mandatory field was unset.
-    pub fn finish(self) -> Result<Handshake<S>, &'static str> {
+    pub fn finish(self) -> Result<Handshake<S, B>, &'static str> {
         let config = self.config.ok_or("did not specify config")?;
         let inbound_service = self
             .inbound_service
@@ -389,9 +407,6 @@ where
             let (tx, _) = broadcast::channel(100);
             tx
         });
-        let best_tip_height = self
-            .best_tip_height
-            .ok_or("did not provide best tip height endpoint")?;
         let timestamp_collector = self.timestamp_collector.unwrap_or_else(|| {
             // No timestamp collector was passed, so create a stub channel.
             // Dropping the receiver means sends will fail, but we don't care.
@@ -401,6 +416,7 @@ where
         let nonces = Arc::new(futures::lock::Mutex::new(HashSet::new()));
         let user_agent = self.user_agent.unwrap_or_else(|| "".to_string());
         let our_services = self.our_services.unwrap_or_else(PeerServices::empty);
+        let best_tip_height = self.best_tip_height;
         let relay = self.relay.unwrap_or(false);
 
         Ok(Handshake {
@@ -418,13 +434,13 @@ where
     }
 }
 
-impl<S> Handshake<S>
+impl<S> Handshake<S, ()>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
 {
     /// Create a builder that configures a [`Handshake`] service.
-    pub fn builder() -> Builder<S> {
+    pub fn builder() -> Builder<S, ()> {
         // We don't derive `Default` because the derive inserts a `where S:
         // Default` bound even though `Option<S>` implements `Default` even if
         // `S` does not.
@@ -436,7 +452,7 @@ where
             our_services: None,
             relay: None,
             inv_collector: None,
-            best_tip_height: None,
+            best_tip_height: (),
         }
     }
 }
@@ -455,7 +471,7 @@ pub async fn negotiate_version(
     user_agent: String,
     our_services: PeerServices,
     relay: bool,
-    best_tip_height: BestTipHeight,
+    best_tip_height: impl BestTipHeight,
 ) -> Result<(Version, PeerServices, SocketAddr), HandshakeError> {
     // Create a random nonce for this connection
     let local_nonce = Nonce::default();
@@ -569,7 +585,7 @@ pub async fn negotiate_version(
 
     // SECURITY: Reject connections to peers on old versions, because they might not know about all
     // network upgrades and could lead to chain forks or slower block propagation.
-    let tip_height = best_tip_height.non_finalized();
+    let tip_height = best_tip_height.best_tip_height();
     let min_version = Version::min_remote_for_height(config.network, tip_height);
     if remote_version < min_version {
         // Disconnect if peer is using an obsolete version.
@@ -593,10 +609,11 @@ pub async fn negotiate_version(
 
 pub type HandshakeRequest = (TcpStream, ConnectedAddr);
 
-impl<S> Service<HandshakeRequest> for Handshake<S>
+impl<S, B> Service<HandshakeRequest> for Handshake<S, B>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
+    B: BestTipHeight + Clone + Send + 'static,
 {
     type Response = Client;
     type Error = BoxError;

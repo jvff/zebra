@@ -45,13 +45,13 @@ use peer::ConnectedAddr;
 pub fn connect_isolated(
     conn: TcpStream,
     user_agent: String,
+    best_tip_height: impl BestTipHeight + Clone + Send + 'static,
 ) -> impl Future<
     Output = Result<
         BoxService<Request, Response, Box<dyn std::error::Error + Send + Sync + 'static>>,
         Box<dyn std::error::Error + Send + Sync + 'static>,
     >,
 > {
-    let (best_tip_height, _, _) = BestTipHeight::new();
     let handshake = peer::Handshake::builder()
         .with_config(Config::default())
         .with_inbound_service(tower::service_fn(|_req| async move {
@@ -105,7 +105,7 @@ mod tests {
 
         let conn = tokio::net::TcpStream::connect(listen_addr).await.unwrap();
 
-        tokio::spawn(connect_isolated(conn, "".to_string()));
+        tokio::spawn(connect_isolated(conn, "".to_string(), ()));
 
         let (conn, _) = listener.accept().await.unwrap();
 
