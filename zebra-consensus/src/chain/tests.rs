@@ -14,7 +14,7 @@ use zebra_chain::{
 use zebra_state as zs;
 use zebra_test::transcript::{ExpectedTranscriptError, Transcript};
 
-use crate::{tests::util::create_state_service, Config};
+use crate::Config;
 
 use super::*;
 
@@ -63,7 +63,7 @@ async fn verifiers_from_network(
         + Clone
         + 'static,
 ) {
-    let state_service = create_state_service(network);
+    let state_service = zs::init_test(network);
     let chain_verifier =
         crate::chain::init(Config::default(), network, state_service.clone()).await;
 
@@ -153,7 +153,7 @@ async fn verify_checkpoint(config: Config) -> Result<(), Report> {
 
     // Test that the chain::init function works. Most of the other tests use
     // init_from_verifiers.
-    let chain_verifier = super::init(config.clone(), network, create_state_service(network)).await;
+    let chain_verifier = super::init(config.clone(), network, zs::init_test(network)).await;
 
     // Add a timeout layer
     let chain_verifier =

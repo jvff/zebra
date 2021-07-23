@@ -10,6 +10,8 @@ use check::difficulty::POW_MEDIAN_BLOCK_SPAN;
 use futures::future::FutureExt;
 use non_finalized_state::{NonFinalizedState, QueuedBlocks};
 use tokio::sync::oneshot;
+#[cfg(any(test, feature = "proptest-impl"))]
+use tower::buffer::Buffer;
 use tower::{util::BoxService, Service};
 use tracing::instrument;
 use zebra_chain::{
@@ -766,6 +768,16 @@ pub fn init(
     let best_tip_height = service.best_tip_height();
 
     (BoxService::new(service), best_tip_height)
+}
+
+/// Initialize a state service with an ephemeral [`Config`].
+///
+/// This can be used to create a state service for testing. See also [`init`].
+#[cfg(any(test, feature = "proptest-impl"))]
+pub fn init_test(network: Network) -> Buffer<BoxService<Request, Response, BoxError>, Request> {
+    let state_service = StateService::new(Config::ephemeral(), network);
+
+    Buffer::new(BoxService::new(state_service), 1)
 }
 
 /// Check if zebra is following a legacy chain and return an error if so.

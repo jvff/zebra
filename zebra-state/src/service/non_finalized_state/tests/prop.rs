@@ -12,12 +12,12 @@ use zebra_chain::{
 };
 
 use crate::{
+    arbitrary::Prepare,
     service::{
         arbitrary::PreparedChain,
         finalized_state::FinalizedState,
         non_finalized_state::{Chain, NonFinalizedState},
     },
-    tests::Prepare,
     Config,
 };
 

@@ -8,11 +8,12 @@ use zebra_chain::{
 use zebra_test::prelude::*;
 
 use crate::{
+    arbitrary::Prepare,
     service::{
         finalized_state::FinalizedState,
         non_finalized_state::{Chain, NonFinalizedState},
     },
-    tests::{FakeChainHelper, Prepare},
+    tests::FakeChainHelper,
     Config,
 };
 
