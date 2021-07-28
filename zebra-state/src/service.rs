@@ -748,7 +748,7 @@ pub fn init(config: Config, network: Network) -> BoxService<Request, Response, B
     BoxService::new(StateService::new(config, network))
 }
 
-/// Initialize a state service with an ephemeral [`Config`].
+/// Initialize a state service with an ephemeral [`Config`] and a buffer with a single slot.
 ///
 /// This can be used to create a state service for testing. See also [`init`].
 #[cfg(any(test, feature = "proptest-impl"))]
