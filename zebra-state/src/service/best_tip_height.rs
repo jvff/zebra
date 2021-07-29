@@ -2,7 +2,7 @@ use tokio::sync::watch;
 
 use zebra_chain::block;
 
-/// A helper type to determine the best non-finalized chain tip block height.
+/// A helper type to determine the best chain tip block height.
 ///
 /// The block height is determined based on the current finalized block height and the current best
 /// non-finalized chain's tip block height. The height is made available from a [`watch::Receiver`].
