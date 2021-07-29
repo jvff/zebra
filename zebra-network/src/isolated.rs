@@ -14,8 +14,6 @@ use tower::{
     Service,
 };
 
-use zebra_chain::block;
-
 use crate::{peer, BoxError, Config, Request, Response};
 use peer::ConnectedAddr;
 
@@ -51,7 +49,7 @@ pub fn connect_isolated(
         Box<dyn std::error::Error + Send + Sync + 'static>,
     >,
 > {
-    let (_, best_tip_height) = watch::channel(block::Height(0));
+    let (_, best_tip_height) = watch::channel(None);
     let handshake = peer::Handshake::builder()
         .with_config(Config::default())
         .with_inbound_service(tower::service_fn(|_req| async move {

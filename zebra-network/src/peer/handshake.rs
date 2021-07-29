@@ -58,7 +58,7 @@ pub struct Handshake<S> {
     our_services: PeerServices,
     relay: bool,
     parent_span: Span,
-    best_tip_height: watch::Receiver<block::Height>,
+    best_tip_height: watch::Receiver<Option<block::Height>>,
 }
 
 /// The peer address that we are handshaking with.
@@ -308,7 +308,7 @@ pub struct Builder<S> {
     user_agent: Option<String>,
     relay: Option<bool>,
     inv_collector: Option<broadcast::Sender<(InventoryHash, SocketAddr)>>,
-    best_tip_height: Option<watch::Receiver<block::Height>>,
+    best_tip_height: Option<watch::Receiver<Option<block::Height>>>,
 }
 
 impl<S> Builder<S>
@@ -369,7 +369,10 @@ where
     }
 
     /// Provide a realtime endpoint to obtain the current best chain tip block height. Mandatory.
-    pub fn with_best_tip_height(mut self, best_tip_height: watch::Receiver<block::Height>) -> Self {
+    pub fn with_best_tip_height(
+        mut self,
+        best_tip_height: watch::Receiver<Option<block::Height>>,
+    ) -> Self {
         self.best_tip_height = Some(best_tip_height);
         self
     }
@@ -460,7 +463,7 @@ pub async fn negotiate_version(
     user_agent: String,
     our_services: PeerServices,
     relay: bool,
-    best_tip_height: watch::Receiver<block::Height>,
+    best_tip_height: watch::Receiver<Option<block::Height>>,
 ) -> Result<(Version, PeerServices, SocketAddr), HandshakeError> {
     // Create a random nonce for this connection
     let local_nonce = Nonce::default();
@@ -574,7 +577,8 @@ pub async fn negotiate_version(
 
     // SECURITY: Reject connections to peers on old versions, because they might not know about all
     // network upgrades and could lead to chain forks or slower block propagation.
-    let min_version = Version::min_remote_for_height(config.network, *best_tip_height.borrow());
+    let height = best_tip_height.borrow().unwrap_or(block::Height(0));
+    let min_version = Version::min_remote_for_height(config.network, height);
     if remote_version < min_version {
         // Disconnect if peer is using an obsolete version.
         Err(HandshakeError::ObsoleteVersion(remote_version))?;

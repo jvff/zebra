@@ -63,7 +63,7 @@ type PeerChange = Result<Change<SocketAddr, peer::Client>, BoxError>;
 pub async fn init<S>(
     config: Config,
     inbound_service: S,
-    best_tip_height: watch::Receiver<block::Height>,
+    best_tip_height: watch::Receiver<Option<block::Height>>,
 ) -> (
     Buffer<BoxService<Request, Response, BoxError>, Request>,
     Arc<std::sync::Mutex<AddressBook>>,
