@@ -368,7 +368,10 @@ where
         self
     }
 
-    /// Provide a realtime endpoint to obtain the current best chain tip block height. Mandatory.
+    /// Provide a realtime endpoint to obtain the current best chain tip block height. Optional.
+    ///
+    /// If this is unset, the minimum accepted protocol version for peer connections is kept
+    /// constant over network upgrade activations.
     pub fn with_best_tip_height(
         mut self,
         best_tip_height: watch::Receiver<Option<block::Height>>,
@@ -407,9 +410,10 @@ where
         let user_agent = self.user_agent.unwrap_or_else(|| "".to_string());
         let our_services = self.our_services.unwrap_or_else(PeerServices::empty);
         let relay = self.relay.unwrap_or(false);
-        let best_tip_height = self
-            .best_tip_height
-            .ok_or("missing best tip height endpoint")?;
+        let best_tip_height = self.best_tip_height.unwrap_or_else(|| {
+            let (_sender, receiver) = watch::channel(None);
+            receiver
+        });
 
         Ok(Handshake {
             config,
