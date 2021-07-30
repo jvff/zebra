@@ -58,7 +58,7 @@ pub struct Handshake<S> {
     our_services: PeerServices,
     relay: bool,
     parent_span: Span,
-    best_tip_height: watch::Receiver<Option<block::Height>>,
+    best_tip_height: Option<watch::Receiver<Option<block::Height>>>,
 }
 
 /// The peer address that we are handshaking with.
@@ -374,9 +374,9 @@ where
     /// constant over network upgrade activations.
     pub fn with_best_tip_height(
         mut self,
-        best_tip_height: watch::Receiver<Option<block::Height>>,
+        best_tip_height: Option<watch::Receiver<Option<block::Height>>>,
     ) -> Self {
-        self.best_tip_height = Some(best_tip_height);
+        self.best_tip_height = best_tip_height;
         self
     }
 
@@ -410,10 +410,6 @@ where
         let user_agent = self.user_agent.unwrap_or_else(|| "".to_string());
         let our_services = self.our_services.unwrap_or_else(PeerServices::empty);
         let relay = self.relay.unwrap_or(false);
-        let best_tip_height = self.best_tip_height.unwrap_or_else(|| {
-            let (_sender, receiver) = watch::channel(None);
-            receiver
-        });
 
         Ok(Handshake {
             config,
@@ -425,7 +421,7 @@ where
             our_services,
             relay,
             parent_span: Span::current(),
-            best_tip_height,
+            best_tip_height: self.best_tip_height,
         })
     }
 }
@@ -467,7 +463,7 @@ pub async fn negotiate_version(
     user_agent: String,
     our_services: PeerServices,
     relay: bool,
-    best_tip_height: watch::Receiver<Option<block::Height>>,
+    best_tip_height: Option<watch::Receiver<Option<block::Height>>>,
 ) -> Result<(Version, PeerServices, SocketAddr), HandshakeError> {
     // Create a random nonce for this connection
     let local_nonce = Nonce::default();
@@ -581,7 +577,7 @@ pub async fn negotiate_version(
 
     // SECURITY: Reject connections to peers on old versions, because they might not know about all
     // network upgrades and could lead to chain forks or slower block propagation.
-    let height = *best_tip_height.borrow();
+    let height = best_tip_height.and_then(|height| *height.borrow());
     let min_version = Version::min_remote_for_height(config.network, height);
     if remote_version < min_version {
         // Disconnect if peer is using an obsolete version.
