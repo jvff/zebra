@@ -6,6 +6,24 @@ use super::super::BestTipHeight;
 
 proptest! {
     #[test]
+    fn non_finalized_tip_changes_best_tip(non_finalized_height in any::<block::Height>()) {
+        let (mut best_tip_height, receiver) = BestTipHeight::new();
+
+        best_tip_height.set_best_non_finalized_height(Some(non_finalized_height));
+
+        assert_eq!(*receiver.borrow(), Some(non_finalized_height));
+    }
+
+    #[test]
+    fn finalized_tip_changes_best_tip(finalized_height in any::<block::Height>()) {
+        let (mut best_tip_height, receiver) = BestTipHeight::new();
+
+        best_tip_height.set_finalized_height(finalized_height);
+
+        assert_eq!(*receiver.borrow(), Some(finalized_height));
+    }
+
+    #[test]
     fn best_tip_value_is_heighest_of_finalized_and_non_finalized_heights(
         finalized_height in any::<Option<block::Height>>(),
         non_finalized_height in any::<Option<block::Height>>(),
