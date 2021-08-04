@@ -21,7 +21,7 @@ impl Arbitrary for Input {
     type Parameters = Option<block::Height>;
 
     fn arbitrary_with(height: Self::Parameters) -> Self::Strategy {
-        if let Some(height) = dbg!(height) {
+        if let Some(height) = height {
             (vec(any::<u8>(), 0..95), any::<u32>())
                 .prop_map(move |(data, sequence)| Input::Coinbase {
                     height,

@@ -110,12 +110,9 @@ fn parse_coinbase_height(
                 Err(SerializationError::Parse("Invalid block height"))
             }
         }
-        val => {
-            dbg!(val);
-            Err(SerializationError::Parse(
-                "Could not parse BIP34 height in coinbase data",
-            ))
-        }
+        _ => Err(SerializationError::Parse(
+            "Could not parse BIP34 height in coinbase data",
+        )),
     }
 }
 
@@ -162,7 +159,6 @@ fn write_coinbase_height<W: io::Write>(
     // guards are stabilized.
     // The Bitcoin encoding requires that the most significant byte is below 0x80,
     // so the ranges run up to 2^{n-1} rather than 2^n.
-    dbg!(height);
     if let 0 = height.0 {
         // The genesis block's coinbase data does not have a height prefix.
         // So we return an error if the entire coinbase data doesn't match genesis.
