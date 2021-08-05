@@ -14,7 +14,7 @@ pub struct BestTipHeight {
     finalized: Option<block::Height>,
     non_finalized: Option<block::Height>,
     sender: watch::Sender<Option<block::Height>>,
-    // TODO: Replace this with a `watch::Sender::borrow` call once Tokio is updated to 1.0.0
+    // TODO: Replace with calls to `watch::Sender::borrow` once Tokio is updated to 1.0.0 (#2573)
     active_value: Option<block::Height>,
 }
 
