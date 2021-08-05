@@ -14,7 +14,7 @@ use zebra_test::{prelude::*, transcript::Transcript};
 use crate::{
     arbitrary::Prepare,
     constants, init_test,
-    service::{arbitrary::PreparedChain, StateService},
+    service::StateService,
     tests::setup::{partial_nu5_chain_strategy, transaction_v4_from_coinbase},
     BoxError, Config, FinalizedBlock, PreparedBlock, Request, Response,
 };
@@ -290,14 +290,11 @@ proptest! {
     /// 4. Finally, select the first fork and commit all of its blocks, and check that the best tip
     ///    height is updated, likely into a reduced height because the other forks are discarded.
     #[test]
-    fn best_tip_height_is_updated((chain, count, network) in PreparedChain::default()) {
+    fn best_tip_height_is_updated(
+        (network, finalized_blocks, non_finalized_blocks)
+            in continuous_empty_blocks_from_test_vectors(),
+    ) {
         zebra_test::init();
-
-        let finalized_blocks = chain
-            .iter()
-            .take(count)
-            .map(|prepared_block| FinalizedBlock::from(prepared_block.block.clone()));
-        let non_finalized_blocks = chain.iter().skip(count).cloned();
 
         let (mut state_service, best_tip_height) = StateService::new(Config::ephemeral(), network);
 
