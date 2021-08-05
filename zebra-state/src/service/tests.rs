@@ -282,14 +282,11 @@ proptest! {
 
     /// Test that the best tip height is updated accordingly.
     ///
-    /// 1. Generate a finalized chain and some non-finalized chains that continue the finalized
-    ///    chain.
-    /// 2. Commit the finalized blocks and check that the best tip height is updated accordingly.
-    /// 3. Commit all non-finalized blocks in all forks and check that the best tip height is
-    ///    also updated accordingly.
-    /// 4. Finally, select the first fork and commit all of its blocks, and check that the best tip
-    ///    height is updated, likely into a reduced height because the other forks are discarded.
-    #[test]
+    /// 1. Generate a finalized chain and some non-finalized blocks.
+    /// 2. Check that initially the best tip height is empty.
+    /// 3. Commit the finalized blocks and check that the best tip height is updated accordingly.
+    /// 4. Commit the non-finalized blocks and check that the best tip height is also updated
+    ///    accordingly.
     fn best_tip_height_is_updated(
         (network, finalized_blocks, non_finalized_blocks)
             in continuous_empty_blocks_from_test_vectors(),
