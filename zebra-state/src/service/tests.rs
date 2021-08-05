@@ -355,7 +355,7 @@ fn continuous_empty_blocks_from_test_vectors(
             let non_finalized_blocks = blocks.split_off(finalized_blocks_count);
             let finalized_blocks: Vec<_> = blocks
                 .into_iter()
-                .map(|prepared_block| FinalizedBlock::from(prepared_block.block.clone()))
+                .map(|prepared_block| FinalizedBlock::from(prepared_block.block))
                 .collect();
 
             (network, finalized_blocks, non_finalized_blocks)
