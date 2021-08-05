@@ -300,27 +300,21 @@ proptest! {
 
         prop_assert_eq!(*best_tip_height.borrow(), None);
 
-        let mut expected_height = None;
-
         for block in finalized_blocks {
-            expected_height = Some(block.height);
+            let expected_height = block.height;
 
             state_service.queue_and_commit_finalized(block);
 
-            prop_assert_eq!(*best_tip_height.borrow(), expected_height);
+            prop_assert_eq!(*best_tip_height.borrow(), Some(expected_height));
         }
 
-        prop_assert_eq!(*best_tip_height.borrow(), expected_height);
-
         for block in non_finalized_blocks {
-            expected_height = Some(block.height);
+            let expected_height = block.height;
 
             state_service.queue_and_commit_non_finalized(block);
 
-            prop_assert_eq!(*best_tip_height.borrow(), expected_height);
+            prop_assert_eq!(*best_tip_height.borrow(), Some(expected_height));
         }
-
-        prop_assert_eq!(*best_tip_height.borrow(), expected_height);
     }
 }
 
