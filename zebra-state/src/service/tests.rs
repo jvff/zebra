@@ -347,7 +347,7 @@ fn continuous_empty_blocks_from_test_vectors(
                 .collect();
 
             // Always finalize the genesis block
-            let finalized_blocks_count = 1..blocks.len();
+            let finalized_blocks_count = 1..=blocks.len();
 
             (Just(network), Just(blocks), finalized_blocks_count)
         })
