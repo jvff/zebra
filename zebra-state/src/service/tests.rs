@@ -320,7 +320,7 @@ proptest! {
 ///
 /// Selects either the mainnet or testnet chain test vector and randomly splits the chain in two
 /// lists of blocks. The first containing the blocks to be finalized (which always includes at
-/// least the genesis blocks) and the blocks to be stored in the non-finalized state.
+/// least the genesis block) and the blocks to be stored in the non-finalized state.
 fn continuous_empty_blocks_from_test_vectors(
 ) -> impl Strategy<Value = (Network, Vec<FinalizedBlock>, Vec<PreparedBlock>)> {
     any::<Network>()
