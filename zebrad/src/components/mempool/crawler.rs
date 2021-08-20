@@ -67,15 +67,13 @@ where
 
         trace!("Crawling for mempool transactions");
 
-        let result = peer_set
+        peer_set
             .call_all(requests)
             .unordered()
-            .try_for_each(|response| self.handle_response(response))
+            .and_then(|response| self.handle_response(response))
+            .inspect_err(|error| error!("Failed to crawl peer for mempool transactions: {}", error))
+            .for_each(|_| async {})
             .await;
-
-        if let Err(error) = result {
-            error!("Failed to crawl peers for mempool transactions: {}", error);
-        }
     }
 
     /// Handle a peer's response to the crawler's request for transactions.
