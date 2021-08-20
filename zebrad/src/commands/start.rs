@@ -31,7 +31,7 @@ use tower::builder::ServiceBuilder;
 use crate::components::{tokio::RuntimeRun, Inbound};
 use crate::config::ZebradConfig;
 use crate::{
-    components::{tokio::TokioComponent, ChainSync},
+    components::{mempool, tokio::TokioComponent, ChainSync},
     prelude::*,
 };
 
@@ -78,7 +78,9 @@ impl StartCmd {
             .map_err(|_| eyre!("could not send setup data to inbound service"))?;
 
         info!("initializing syncer");
-        let syncer = ChainSync::new(&config, peer_set, state, verifier);
+        let syncer = ChainSync::new(&config, peer_set.clone(), state, verifier);
+
+        mempool::Crawler::spawn(peer_set);
 
         syncer.sync().await
     }
