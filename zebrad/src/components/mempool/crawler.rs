@@ -71,7 +71,8 @@ where
             .call_all(requests)
             .unordered()
             .and_then(|response| self.handle_response(response))
-            .inspect_err(|error| error!("Failed to crawl peer for mempool transactions: {}", error))
+            // TODO: Reduce the log level of the errors (#2655).
+            .inspect_err(|error| info!("Failed to crawl peer for mempool transactions: {}", error))
             .for_each(|_| async {})
             .await;
     }
