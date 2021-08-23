@@ -25,6 +25,7 @@
 
 use abscissa_core::{config, Command, FrameworkError, Options, Runnable};
 use color_eyre::eyre::{eyre, Report};
+use futures::{select, FutureExt};
 use tokio::sync::oneshot;
 use tower::builder::ServiceBuilder;
 
@@ -82,9 +83,12 @@ impl StartCmd {
         let (syncer, _sync_length_receiver) =
             ChainSync::new(&config, peer_set.clone(), state, verifier);
 
-        mempool::Crawler::spawn(peer_set);
-
-        syncer.sync().await
+        select! {
+            result = syncer.sync().fuse() => result,
+            _ = mempool::Crawler::spawn(peer_set).fuse() => {
+                unreachable!("The mempool crawler only stops if it panics");
+            }
+        }
     }
 }
 
