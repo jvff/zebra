@@ -79,13 +79,12 @@ impl StartCmd {
             .map_err(|_| eyre!("could not send setup data to inbound service"))?;
 
         info!("initializing syncer");
-        // TODO: use sync_length_receiver to activate the mempool (#2592)
-        let (syncer, _sync_length_receiver) =
+        let (syncer, sync_length_receiver) =
             ChainSync::new(&config, peer_set.clone(), state, verifier);
 
         select! {
             result = syncer.sync().fuse() => result,
-            _ = mempool::Crawler::spawn(peer_set).fuse() => {
+            _ = mempool::Crawler::spawn(peer_set, sync_length_receiver).fuse() => {
                 unreachable!("The mempool crawler only stops if it panics");
             }
         }

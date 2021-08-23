@@ -1,7 +1,10 @@
 use std::time::Duration;
 
 use tokio::{
-    sync::mpsc::{self, UnboundedReceiver},
+    sync::{
+        mpsc::{self, UnboundedReceiver},
+        watch,
+    },
     time::{self, timeout},
 };
 use tower::{buffer::Buffer, util::BoxService, BoxError};
@@ -30,7 +33,10 @@ const ERROR_MARGIN: Duration = Duration::from_millis(100);
 async fn crawler_requests_for_transaction_ids() {
     let (peer_set, mut requests) = mock_peer_set();
 
-    Crawler::spawn(peer_set);
+    // Mock the latest sync length in a state that enables the mempool.
+    let (_, latest_sync_length) = watch::channel(vec![0; 5]);
+
+    Crawler::spawn(peer_set, latest_sync_length);
 
     time::pause();
 

@@ -5,7 +5,11 @@
 use std::time::Duration;
 
 use futures::{stream, StreamExt, TryStreamExt};
-use tokio::{sync::Mutex, task::JoinHandle, time::sleep};
+use tokio::{
+    sync::{watch, Mutex},
+    task::JoinHandle,
+    time::sleep,
+};
 use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
 
 use zebra_network::{Request, Response};
@@ -31,6 +35,7 @@ const PEER_RESPONSE_TIMEOUT: Duration = Duration::from_secs(6);
 /// The mempool transaction crawler.
 pub struct Crawler<S> {
     peer_set: Mutex<Timeout<S>>,
+    latest_sync_length: watch::Receiver<Vec<usize>>,
 }
 
 impl<S> Crawler<S>
@@ -39,9 +44,10 @@ where
     S::Future: Send,
 {
     /// Spawn an asynchronous task to run the mempool crawler.
-    pub fn spawn(peer_set: S) -> JoinHandle<()> {
+    pub fn spawn(peer_set: S, latest_sync_length: watch::Receiver<Vec<usize>>) -> JoinHandle<()> {
         let crawler = Crawler {
             peer_set: Mutex::new(Timeout::new(peer_set, PEER_RESPONSE_TIMEOUT)),
+            latest_sync_length,
         };
 
         tokio::spawn(crawler.run())
