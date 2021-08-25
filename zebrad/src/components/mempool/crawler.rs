@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::{stream, FutureExt, StreamExt, TryStreamExt};
 use tokio::{
     sync::{watch, Mutex},
     task::JoinHandle,
@@ -54,17 +54,23 @@ where
     }
 
     /// Periodically crawl peers for transactions to include in the mempool.
-    pub async fn run(self) {
-        loop {
-            self.wait_until_enabled().await;
+    pub async fn run(mut self) {
+        while self.wait_until_enabled().await {
             self.crawl_transactions().await;
             sleep(RATE_LIMIT_DELAY).await;
         }
     }
 
     /// Wait until the mempool is enabled.
-    async fn wait_until_enabled(&self) {
+    ///
+    /// Returns `false` if there's no way to know if the mempool is enabled and the crawler should
+    /// stop.
+    async fn wait_until_enabled(&mut self) -> bool {
         // TODO: Check if synchronizing up to chain tip has finished (#2603).
+        matches!(
+            self.latest_sync_length.changed().now_or_never(),
+            Some(Err(_))
+        )
     }
 
     /// Crawl peers for transactions.
