@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use futures::{stream, FutureExt, StreamExt, TryStreamExt};
+use futures::{stream, StreamExt, TryStreamExt};
 use tokio::{
     sync::{watch, Mutex},
     task::JoinHandle,
@@ -13,6 +13,8 @@ use tokio::{
 use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
 
 use zebra_network::{Request, Response};
+
+use super::is_enabled;
 
 #[cfg(test)]
 mod tests;
@@ -66,11 +68,24 @@ where
     /// Returns `false` if there's no way to know if the mempool is enabled and the crawler should
     /// stop.
     async fn wait_until_enabled(&mut self) -> bool {
-        // TODO: Check if synchronizing up to chain tip has finished (#2603).
-        matches!(
-            self.latest_sync_length.changed().now_or_never(),
-            Some(Err(_))
-        )
+        while !self.is_enabled() {
+            let wait_result = self.latest_sync_length.changed().await;
+
+            if wait_result.is_err() {
+                // If this happens, it's likely that Zebra is shutting down.
+                debug!("Mempool crawler stopped receiving latest sync lengths. Stopping...");
+                return false;
+            }
+        }
+
+        true
+    }
+
+    /// Check if the mempool is currently enabled.
+    fn is_enabled(&self) -> bool {
+        let sync_lengths = self.latest_sync_length.borrow();
+
+        is_enabled(&*sync_lengths)
     }
 
     /// Crawl peers for transactions.
