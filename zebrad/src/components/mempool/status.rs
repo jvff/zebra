@@ -38,7 +38,7 @@ impl MempoolStatus {
     pub fn is_enabled(&self) -> bool {
         let _sync_lengths = self.latest_sync_length.borrow();
 
-        // TODO: Determine if the mempool is actually enabled or not.
+        // TODO: Determine if the mempool is actually enabled or not (#2592).
         true
     }
 }
