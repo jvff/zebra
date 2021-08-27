@@ -4,7 +4,10 @@
 
 use std::time::Duration;
 
-use futures::{stream::FuturesUnordered, StreamExt};
+use futures::{
+    stream::{self, FuturesUnordered},
+    StreamExt, TryFutureExt, TryStreamExt,
+};
 use tokio::{sync::Mutex, task::JoinHandle, time::sleep};
 use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
 
@@ -69,30 +72,30 @@ where
 
         trace!("Crawling for mempool transactions");
 
-        let mut requests = FuturesUnordered::new();
         // get readiness for one peer at a time, to avoid peer set contention
-        for _ in 0..FANOUT {
-            let mut peer_set = peer_set.clone();
+        let requests = stream::repeat_with(move || peer_set.clone())
+            .take(FANOUT)
+            .then(|peer_set| {
+                peer_set.ready_oneshot().map_ok(|mut ready_peer_set| {
+                    ready_peer_set.call(Request::MempoolTransactionIds)
+                })
+            })
             // end the task on permanent peer set errors
-            let peer_set = peer_set.ready_and().await?;
+            .try_collect::<FuturesUnordered<_>>()
+            .await?;
 
-            requests.push(peer_set.call(Request::MempoolTransactionIds));
-        }
-
-        while let Some(result) = requests.next().await {
-            // log individual response errors
-            match result {
-                Ok(response) => self.handle_response(response).await,
-                // TODO: Reduce the log level of the errors (#2655).
-                Err(error) => info!("Failed to crawl peer for mempool transactions: {}", error),
-            }
-        }
+        requests
+            .and_then(|response| self.handle_response(response))
+            // TODO: Reduce the log level of the errors (#2655).
+            .inspect_err(|error| info!("Failed to crawl peer for mempool transactions: {}", error))
+            .for_each(|_| async {})
+            .await;
 
         Ok(())
     }
 
     /// Handle a peer's response to the crawler's request for transactions.
-    async fn handle_response(&self, response: Response) {
+    async fn handle_response(&self, response: Response) -> Result<(), BoxError> {
         let transaction_ids = match response {
             Response::TransactionIds(ids) => ids,
             _ => unreachable!("Peer set did not respond with transaction IDs to mempool crawler"),
@@ -104,5 +107,7 @@ where
         );
 
         // TODO: Send transaction IDs to the download and verify stream (#2650)
+
+        Ok(())
     }
 }
