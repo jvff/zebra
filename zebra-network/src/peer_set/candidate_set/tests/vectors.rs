@@ -1,7 +1,5 @@
 use std::{
-    collections::VecDeque,
     convert::TryInto,
-    iter,
     net::{IpAddr, SocketAddr},
     str::FromStr,
     sync::Arc,
@@ -9,13 +7,10 @@ use std::{
 };
 
 use chrono::{DateTime, Duration, Utc};
-use futures::future;
 use tokio::{
     runtime::Runtime,
-    sync::watch,
     time::{self, Instant},
 };
-use tower::Service;
 use tracing::Span;
 
 use zebra_chain::serialization::DateTime32;
