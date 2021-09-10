@@ -67,8 +67,7 @@ proptest! {
                 recent_sync_lengths.push_extend_tips_length(sync_length);
             }
 
-            let result: Result<(), TestCaseError> = Ok(());
-            result
+            Ok::<(), TestCaseError>(())
         })?;
     }
 }
