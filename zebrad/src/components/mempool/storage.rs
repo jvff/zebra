@@ -160,7 +160,7 @@ impl Storage {
     ///
     /// Two transactions conflict if they spent the same UTXO or if they reveal the same nullifier.
     fn check_spend_conflicts(&self, tx: &UnminedTx) -> bool {
-        self.has_conflicts(tx, Transaction::outputs)
+        self.has_conflicts(tx, Transaction::inputs)
             || self.has_conflicts(tx, Transaction::sprout_nullifiers)
             || self.has_conflicts(tx, Transaction::sapling_nullifiers)
             || self.has_conflicts(tx, Transaction::orchard_nullifiers)
