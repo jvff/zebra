@@ -1,10 +1,12 @@
 use std::{collections::HashSet, net::SocketAddr, str::FromStr, sync::Arc};
 
 use super::mempool::{unmined_transactions_in_blocks, Mempool};
-use crate::components::{sync::SyncStatus, tests::mock_peer_set};
+use crate::components::{mempool::MempoolError, sync::SyncStatus, tests::mock_peer_set};
 
 use tokio::sync::oneshot;
-use tower::{builder::ServiceBuilder, load_shed::LoadShed, util::BoxService, ServiceExt};
+use tower::{
+    buffer::Buffer, builder::ServiceBuilder, load_shed::LoadShed, util::BoxService, ServiceExt,
+};
 
 use tracing::Span;
 use zebra_chain::{
@@ -14,9 +16,14 @@ use zebra_chain::{
     transaction::{UnminedTx, UnminedTxId},
 };
 
-use zebra_consensus::{transaction::SKIP_TRANSACTION_VERIFICATION, Config as ConsensusConfig};
+use zebra_consensus::{
+    error::TransactionError,
+    transaction::{self, SKIP_TRANSACTION_VERIFICATION},
+    Config as ConsensusConfig,
+};
 use zebra_network::{AddressBook, Request, Response};
 use zebra_state::Config as StateConfig;
+use zebra_test::mock_service::{MockService, PanicAssertion};
 
 #[tokio::test]
 async fn mempool_requests_for_transactions() {
@@ -59,9 +66,6 @@ async fn mempool_requests_for_transactions() {
 
 #[tokio::test]
 async fn mempool_push_transaction() -> Result<(), crate::BoxError> {
-    // turn off transaction verification for this test
-    *SKIP_TRANSACTION_VERIFICATION.lock().unwrap() = true;
-
     // get a block that has at least one non coinbase transaction
     let block: Arc<Block> =
         zebra_test::vectors::BLOCK_MAINNET_982681_BYTES.zcash_deserialize_into()?;
@@ -162,6 +166,14 @@ async fn setup(
     let (block_verifier, transaction_verifier) =
         zebra_consensus::chain::init(consensus_config.clone(), network, state_service.clone())
             .await;
+
+    let mut mock_service: MockService<
+        transaction::Request,
+        transaction::Response,
+        PanicAssertion,
+        TransactionError,
+    > = MockService::build().for_unit_tests();
+    let mut transaction_verifier = Buffer::new(BoxService::new(mock_service), 10);
 
     let mut mempool_service = Mempool::new(
         network,
