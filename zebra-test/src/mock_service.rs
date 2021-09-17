@@ -232,9 +232,9 @@ impl MockServiceBuilder {
     ///
     /// The assertions performed by [`MockService`] use the macros provided by [`proptest`], like
     /// [`prop_assert`].
-    pub fn for_prop_tests<Request, Response>(
+    pub fn for_prop_tests<Request, Response, Error>(
         self,
-    ) -> MockService<Request, Response, PropTestAssertion> {
+    ) -> MockService<Request, Response, PropTestAssertion, Error> {
         self.finish()
     }
 
@@ -242,9 +242,9 @@ impl MockServiceBuilder {
     ///
     /// The assertions performed by [`MockService`] use the macros provided by default in Rust,
     /// like [`assert`].
-    pub fn for_unit_tests<Request, Response>(
+    pub fn for_unit_tests<Request, Response, Error>(
         self,
-    ) -> MockService<Request, Response, PanicAssertion> {
+    ) -> MockService<Request, Response, PanicAssertion, Error> {
         self.finish()
     }
 
@@ -253,7 +253,9 @@ impl MockServiceBuilder {
     /// Note that this is used by both [`Self::for_prop_tests`] and [`Self::for_unit_tests`], the
     /// only difference being the `Assertion` generic type parameter, which Rust infers
     /// automatically.
-    fn finish<Request, Response, Assertion>(self) -> MockService<Request, Response, Assertion> {
+    fn finish<Request, Response, Assertion, Error>(
+        self,
+    ) -> MockService<Request, Response, Assertion, Error> {
         let proxy_channel_size = self
             .proxy_channel_size
             .unwrap_or(DEFAULT_PROXY_CHANNEL_SIZE);
