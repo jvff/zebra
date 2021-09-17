@@ -3,6 +3,7 @@ use std::{collections::HashSet, net::SocketAddr, str::FromStr, sync::Arc};
 use super::mempool::{unmined_transactions_in_blocks, Mempool};
 use crate::components::{mempool::MempoolError, sync::SyncStatus, tests::mock_peer_set};
 
+use futures::FutureExt;
 use tokio::sync::oneshot;
 use tower::{
     buffer::Buffer, builder::ServiceBuilder, load_shed::LoadShed, util::BoxService, ServiceExt,
@@ -27,7 +28,7 @@ use zebra_test::mock_service::{MockService, PanicAssertion};
 
 #[tokio::test]
 async fn mempool_requests_for_transactions() {
-    let (inbound_service, added_transactions) = setup(true).await;
+    let (inbound_service, added_transactions, mut transaction_verifier) = setup(true).await;
 
     let added_transaction_ids: Vec<UnminedTxId> = added_transactions
         .clone()
@@ -39,9 +40,16 @@ async fn mempool_requests_for_transactions() {
     // Test `Request::MempoolTransactionIds`
     let request = inbound_service
         .clone()
-        .oneshot(Request::MempoolTransactionIds)
-        .await;
-    match request {
+        .oneshot(Request::MempoolTransactionIds);
+
+    let unmined_tx_id = added_transaction_ids[0].clone();
+    let responder = transaction_verifier
+        .expect_request_that(|_| true)
+        .map(|responder| responder.respond(responder.request.tx_id()));
+
+    let (response, _) = futures::join!(request, responder);
+
+    match response {
         Ok(Response::TransactionIds(response)) => assert_eq!(response, added_transaction_ids),
         _ => unreachable!(
             "`MempoolTransactionIds` requests should always respond `Ok(Vec<UnminedTxId>)`"
@@ -73,7 +81,7 @@ async fn mempool_push_transaction() -> Result<(), crate::BoxError> {
     // use the first transaction that is not coinbase
     let tx = block.transactions[1].clone();
 
-    let (inbound_service, _) = setup(false).await;
+    let (inbound_service, _, _) = setup(false).await;
 
     // Test `Request::PushTransaction`
     let request = inbound_service
@@ -115,7 +123,7 @@ async fn mempool_advertise_transaction_ids() -> Result<(), crate::BoxError> {
     let mut txs = HashSet::new();
     txs.insert(block.transactions[1].unmined_id());
 
-    let (inbound_service, _) = setup(false).await;
+    let (inbound_service, _, _) = setup(false).await;
 
     // Test `Request::AdvertiseTransactionIds`
     let request = inbound_service
@@ -151,6 +159,7 @@ async fn setup(
 ) -> (
     LoadShed<tower::buffer::Buffer<super::Inbound, zebra_network::Request>>,
     Option<Vec<UnminedTx>>,
+    MockService<transaction::Request, transaction::Response, PanicAssertion, TransactionError>,
 ) {
     let network = Network::Mainnet;
     let consensus_config = ConsensusConfig::default();
@@ -163,17 +172,12 @@ async fn setup(
     let (state, _, _) = zebra_state::init(state_config, network);
     let state_service = ServiceBuilder::new().buffer(1).service(state);
 
-    let (block_verifier, transaction_verifier) =
+    let (block_verifier, _real_transaction_verifier) =
         zebra_consensus::chain::init(consensus_config.clone(), network, state_service.clone())
             .await;
 
-    let mut mock_service: MockService<
-        transaction::Request,
-        transaction::Response,
-        PanicAssertion,
-        TransactionError,
-    > = MockService::build().for_unit_tests();
-    let mut transaction_verifier = Buffer::new(BoxService::new(mock_service), 10);
+    let mock_service = MockService::build().for_unit_tests();
+    let transaction_verifier = Buffer::new(BoxService::new(mock_service.clone()), 10);
 
     let mut mempool_service = Mempool::new(
         network,
@@ -217,7 +221,7 @@ async fn setup(
         .await
         .unwrap();
 
-    (inbound_service, added_transactions)
+    (inbound_service, added_transactions, mock_service)
 }
 
 fn add_some_stuff_to_mempool(mempool_service: &mut Mempool, network: Network) -> Vec<UnminedTx> {
