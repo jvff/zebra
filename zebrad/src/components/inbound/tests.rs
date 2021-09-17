@@ -1,7 +1,7 @@
 use std::{collections::HashSet, net::SocketAddr, str::FromStr, sync::Arc};
 
 use super::mempool::{unmined_transactions_in_blocks, Mempool};
-use crate::components::tests::mock_peer_set;
+use crate::components::{sync::SyncStatus, tests::mock_peer_set};
 
 use tokio::sync::oneshot;
 use tower::{builder::ServiceBuilder, load_shed::LoadShed, util::BoxService, ServiceExt};
@@ -154,6 +154,7 @@ async fn setup(
     let (peer_set, _) = mock_peer_set();
     let address_book = AddressBook::new(SocketAddr::from_str("0.0.0.0:0").unwrap(), Span::none());
     let address_book = Arc::new(std::sync::Mutex::new(address_book));
+    let (sync_status, _recent_syncs) = SyncStatus::new();
 
     let (state, _, _) = zebra_state::init(state_config, network);
     let state_service = ServiceBuilder::new().buffer(1).service(state);
@@ -167,6 +168,7 @@ async fn setup(
         peer_set.clone(),
         state_service.clone(),
         transaction_verifier,
+        sync_status,
     );
 
     let mut added_transactions = None;

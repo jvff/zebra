@@ -3173,7 +3173,7 @@ dependencies = [
  "serde_json",
  "strip-ansi-escapes",
  "tracing",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
 ]
 
 [[package]]
@@ -3233,9 +3233,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.67"
+version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7f9e390c27c3c0ce8bc5d725f6e4d30a29d26659494aa4b17535f7522c5c950"
+checksum = "0f690853975602e1bfe1ccbf50504d67174e3bcf340f23b5ea9992e0587a52d8"
 dependencies = [
  "itoa",
  "ryu",
@@ -3256,9 +3256,9 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.9.6"
+version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9204c41a1597a8c5af23c82d1c921cb01ec0a4c59e07a9c7306062829a3903f3"
+checksum = "b69f9a4c9740d74c5baa3fd2e547f9525fa8088a8a958e0ca2409a514e33f5fa"
 dependencies = [
  "block-buffer",
  "cfg-if 1.0.0",
@@ -3761,7 +3761,7 @@ dependencies = [
 
 [[package]]
 name = "tower-batch"
-version = "0.2.12"
+version = "0.2.13"
 dependencies = [
  "color-eyre",
  "ed25519-zebra",
@@ -3824,9 +3824,9 @@ dependencies = [
 
 [[package]]
 name = "tracing"
-version = "0.1.26"
+version = "0.1.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09adeb8c97449311ccd28a427f96fb563e7fd31aabf994189879d9da2394b89d"
+checksum = "c2ba9ab62b7d6497a8638dfda5e5c4fb3b2d5a7fca4118f2b96151c8ef1a437e"
 dependencies = [
  "cfg-if 1.0.0",
  "log",
@@ -3837,9 +3837,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c42e6fa53307c8a17e4ccd4dc81cf5ec38db9209f59b222210375b54ee40d1e2"
+checksum = "98863d0dd09fa59a1b79c6750ad80dbda6b75f4e71c437a6a1a8cb91a8bcbd77"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.7",
@@ -3862,7 +3862,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4d7c0b83d4a500748fa5879461652b361edf5c9d51ede2a2ac03875ca185e24"
 dependencies = [
  "tracing",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
 ]
 
 [[package]]
@@ -3873,7 +3873,7 @@ checksum = "bd520fe41c667b437952383f3a1ec14f1fa45d653f719a77eedd6e6a02d8fa54"
 dependencies = [
  "lazy_static",
  "tracing",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
 ]
 
 [[package]]
@@ -3893,7 +3893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fe1f0ed2b7a5fcb6da2bc9e783587d9a0c8b9535e50224afe04e543eae8a2d6"
 dependencies = [
  "tracing-core",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
 ]
 
 [[package]]
@@ -3936,9 +3936,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d29c0f56bcd17117430bc60fd10624b419ab8a3b5c358796a31e9a37a83a65"
+checksum = "62af966210b88ad5776ee3ba12d5f35b8d6a2b2a12168f3080cf02b814d7376b"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",
@@ -4497,7 +4497,7 @@ dependencies = [
 
 [[package]]
 name = "zebra-chain"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "aes",
  "bech32",
@@ -4552,7 +4552,7 @@ version = "1.0.0-alpha.0"
 
 [[package]]
 name = "zebra-consensus"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "bellman",
  "blake2b_simd",
@@ -4578,7 +4578,7 @@ dependencies = [
  "tracing",
  "tracing-error",
  "tracing-futures",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
  "wagyu-zcash-parameters",
  "zebra-chain",
  "zebra-script",
@@ -4588,7 +4588,7 @@ dependencies = [
 
 [[package]]
 name = "zebra-network"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "bitflags",
  "byteorder",
@@ -4623,7 +4623,7 @@ version = "1.0.0-alpha.0"
 
 [[package]]
 name = "zebra-script"
-version = "1.0.0-alpha.17"
+version = "1.0.0-alpha.18"
 dependencies = [
  "displaydoc",
  "hex",
@@ -4636,7 +4636,7 @@ dependencies = [
 
 [[package]]
 name = "zebra-state"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "bincode",
  "chrono",
@@ -4670,7 +4670,7 @@ dependencies = [
 
 [[package]]
 name = "zebra-test"
-version = "1.0.0-alpha.13"
+version = "1.0.0-alpha.14"
 dependencies = [
  "color-eyre",
  "futures 0.3.17",
@@ -4689,19 +4689,19 @@ dependencies = [
  "tower",
  "tracing",
  "tracing-error",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
 ]
 
 [[package]]
 name = "zebra-utils"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "color-eyre",
  "hex",
  "serde_json",
  "structopt",
  "tracing-error",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
  "zebra-chain",
  "zebra-consensus",
  "zebra-state",
@@ -4709,7 +4709,7 @@ dependencies = [
 
 [[package]]
 name = "zebrad"
-version = "1.0.0-alpha.16"
+version = "1.0.0-alpha.17"
 dependencies = [
  "abscissa_core",
  "atty",
@@ -4741,7 +4741,7 @@ dependencies = [
  "tracing-flame",
  "tracing-futures",
  "tracing-journald",
- "tracing-subscriber 0.2.21",
+ "tracing-subscriber 0.2.22",
  "vergen",
  "zebra-chain",
  "zebra-consensus",
