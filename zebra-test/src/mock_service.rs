@@ -675,6 +675,11 @@ impl<Request, Response, Error> ResponseSender<Request, Response, Error> {
         )
     }
 
+    /// Access the `request` that's awaiting a response.
+    pub fn request(&self) -> &Request {
+        &self.request
+    }
+
     /// Respond to the request.
     ///
     /// The `response` can be of the `Response` type or a [`Result`]. This allows sending an error
