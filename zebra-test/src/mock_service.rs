@@ -86,7 +86,8 @@ const DEFAULT_MAX_REQUEST_DELAY: Duration = Duration::from_millis(25);
 /// - The [`Mutex`] ensures only one [`MockService`] instance can reply to the received request.
 /// - The [`Option`] forces the [`MockService`] that handles the request to take ownership of it
 ///   because sending a response also forces the [`ResponseSender`] to be dropped.
-type ProxyItem<Request, Response> = Arc<Mutex<Option<ResponseSender<Request, Response>>>>;
+type ProxyItem<Request, Response, Error> =
+    Arc<Mutex<Option<ResponseSender<Request, Response, Error>>>>;
 
 /// A service implementation that allows intercepting requests for checking them.
 ///
@@ -101,9 +102,9 @@ type ProxyItem<Request, Response> = Arc<Mutex<Option<ResponseSender<Request, Res
 /// [`broadcast`] channel that the other instances listen to.
 ///
 /// See the [module-level documentation][`super::mock_service`] for an example.
-pub struct MockService<Request, Response, Assertion> {
-    receiver: broadcast::Receiver<ProxyItem<Request, Response>>,
-    sender: broadcast::Sender<ProxyItem<Request, Response>>,
+pub struct MockService<Request, Response, Assertion, Error = BoxError> {
+    receiver: broadcast::Receiver<ProxyItem<Request, Response, Error>>,
+    sender: broadcast::Sender<ProxyItem<Request, Response, Error>>,
     max_request_delay: Duration,
     _assertion_type: PhantomData<Assertion>,
 }
@@ -127,21 +128,23 @@ pub struct MockServiceBuilder {
 /// If a response is not sent, the channel is closed and a [`BoxError`] is returned by the service
 /// to the caller that sent the request.
 #[must_use = "Tests may fail if a response is not sent back to the caller"]
-pub struct ResponseSender<Request, Response> {
+pub struct ResponseSender<Request, Response, Error> {
     request: Request,
-    response_sender: oneshot::Sender<Result<Response, BoxError>>,
+    response_sender: oneshot::Sender<Result<Response, Error>>,
 }
 
 /// The [`tower::Service`] implementation of the [`MockService`].
 ///
 /// The [`MockService`] is always ready, and it intercepts the requests wrapping them in a
 /// [`ResponseSender`] which can be used to send a response.
-impl<Request, Response, Assertion> Service<Request> for MockService<Request, Response, Assertion>
+impl<Request, Response, Assertion, Error> Service<Request>
+    for MockService<Request, Response, Assertion, Error>
 where
     Response: Send + 'static,
+    Error: Send + 'static,
 {
     type Response = Response;
-    type Error = BoxError;
+    type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
     fn poll_ready(&mut self, _context: &mut Context) -> Poll<Result<(), Self::Error>> {
@@ -229,9 +232,9 @@ impl MockServiceBuilder {
     ///
     /// The assertions performed by [`MockService`] use the macros provided by [`proptest`], like
     /// [`prop_assert`].
-    pub fn for_prop_tests<Request, Response>(
+    pub fn for_prop_tests<Request, Response, Error>(
         self,
-    ) -> MockService<Request, Response, PropTestAssertion> {
+    ) -> MockService<Request, Response, PropTestAssertion, Error> {
         self.finish()
     }
 
@@ -239,9 +242,9 @@ impl MockServiceBuilder {
     ///
     /// The assertions performed by [`MockService`] use the macros provided by default in Rust,
     /// like [`assert`].
-    pub fn for_unit_tests<Request, Response>(
+    pub fn for_unit_tests<Request, Response, Error>(
         self,
-    ) -> MockService<Request, Response, PanicAssertion> {
+    ) -> MockService<Request, Response, PanicAssertion, Error> {
         self.finish()
     }
 
@@ -250,7 +253,9 @@ impl MockServiceBuilder {
     /// Note that this is used by both [`Self::for_prop_tests`] and [`Self::for_unit_tests`], the
     /// only difference being the `Assertion` generic type parameter, which Rust infers
     /// automatically.
-    fn finish<Request, Response, Assertion>(self) -> MockService<Request, Response, Assertion> {
+    fn finish<Request, Response, Assertion, Error>(
+        self,
+    ) -> MockService<Request, Response, Assertion, Error> {
         let proxy_channel_size = self
             .proxy_channel_size
             .unwrap_or(DEFAULT_PROXY_CHANNEL_SIZE);
@@ -266,7 +271,7 @@ impl MockServiceBuilder {
 }
 
 /// Implementation of [`MockService`] methods that use standard Rust panicking assertions.
-impl<Request, Response> MockService<Request, Response, PanicAssertion> {
+impl<Request, Response, Error> MockService<Request, Response, PanicAssertion, Error> {
     /// Expect a specific request to be received.
     ///
     /// The expected request should be the next one in the internal queue, or if the queue is
@@ -304,7 +309,10 @@ impl<Request, Response> MockService<Request, Response, PanicAssertion> {
     /// assert!(matches!(call.await, Ok(Ok("response"))));
     /// # });
     /// ```
-    pub async fn expect_request(&mut self, expected: Request) -> ResponseSender<Request, Response>
+    pub async fn expect_request(
+        &mut self,
+        expected: Request,
+    ) -> ResponseSender<Request, Response, Error>
     where
         Request: PartialEq + Debug,
     {
@@ -354,7 +362,7 @@ impl<Request, Response> MockService<Request, Response, PanicAssertion> {
     pub async fn expect_request_that(
         &mut self,
         condition: impl FnOnce(&Request) -> bool,
-    ) -> ResponseSender<Request, Response> {
+    ) -> ResponseSender<Request, Response, Error> {
         let response_sender = self.next_request().await;
 
         assert!(condition(&response_sender.request));
@@ -411,7 +419,7 @@ impl<Request, Response> MockService<Request, Response, PanicAssertion> {
     ///
     /// If the queue is empty and a request is not received before the max request delay timeout
     /// expires.
-    async fn next_request(&mut self) -> ResponseSender<Request, Response> {
+    async fn next_request(&mut self) -> ResponseSender<Request, Response, Error> {
         match self.try_next_request().await {
             Some(request) => request,
             None => panic!("Timeout while waiting for a request"),
@@ -420,7 +428,7 @@ impl<Request, Response> MockService<Request, Response, PanicAssertion> {
 }
 
 /// Implementation of [`MockService`] methods that use [`proptest`] assertions.
-impl<Request, Response> MockService<Request, Response, PropTestAssertion> {
+impl<Request, Response, Error> MockService<Request, Response, PropTestAssertion, Error> {
     /// Expect a specific request to be received.
     ///
     /// The expected request should be the next one in the internal queue, or if the queue is
@@ -469,7 +477,7 @@ impl<Request, Response> MockService<Request, Response, PropTestAssertion> {
     pub async fn expect_request(
         &mut self,
         expected: Request,
-    ) -> Result<ResponseSender<Request, Response>, TestCaseError>
+    ) -> Result<ResponseSender<Request, Response, Error>, TestCaseError>
     where
         Request: PartialEq + Debug,
     {
@@ -528,7 +536,7 @@ impl<Request, Response> MockService<Request, Response, PropTestAssertion> {
     pub async fn expect_request_that(
         &mut self,
         condition: impl FnOnce(&Request) -> bool,
-    ) -> Result<ResponseSender<Request, Response>, TestCaseError> {
+    ) -> Result<ResponseSender<Request, Response, Error>, TestCaseError> {
         let response_sender = self.next_request().await?;
 
         prop_assert!(condition(&response_sender.request));
@@ -595,7 +603,9 @@ impl<Request, Response> MockService<Request, Response, PropTestAssertion> {
     ///
     /// If the queue is empty and a request is not received before the max request delay timeout
     /// expires, an error generated by a [`proptest`] assertion is returned.
-    async fn next_request(&mut self) -> Result<ResponseSender<Request, Response>, TestCaseError> {
+    async fn next_request(
+        &mut self,
+    ) -> Result<ResponseSender<Request, Response, Error>, TestCaseError> {
         match self.try_next_request().await {
             Some(request) => Ok(request),
             None => {
@@ -607,7 +617,7 @@ impl<Request, Response> MockService<Request, Response, PropTestAssertion> {
 }
 
 /// Code that is independent of the assertions used in [`MockService`].
-impl<Request, Response, Assertion> MockService<Request, Response, Assertion> {
+impl<Request, Response, Assertion, Error> MockService<Request, Response, Assertion, Error> {
     /// Try to get the next request received.
     ///
     /// Returns the next element in the queue. If the queue is empty, waits at most the max request
@@ -619,7 +629,7 @@ impl<Request, Response, Assertion> MockService<Request, Response, Assertion> {
     /// If too many requests are received and the queue fills up, the oldest requests are dropped
     /// and ignored. This means that calling this may not receive the next request if the queue is
     /// not dimensioned properly with the [`MockServiceBuilder::with_proxy_channel_size`] method.
-    async fn try_next_request(&mut self) -> Option<ResponseSender<Request, Response>> {
+    async fn try_next_request(&mut self) -> Option<ResponseSender<Request, Response, Error>> {
         loop {
             match timeout(self.max_request_delay, self.receiver.recv()).await {
                 Ok(Ok(item)) => {
@@ -635,7 +645,9 @@ impl<Request, Response, Assertion> MockService<Request, Response, Assertion> {
     }
 }
 
-impl<Request, Response, Assertion> Clone for MockService<Request, Response, Assertion> {
+impl<Request, Response, Assertion, Error> Clone
+    for MockService<Request, Response, Assertion, Error>
+{
     /// Clones the [`MockService`].
     ///
     /// This is a cheap operation, because it simply clones the [`broadcast`] channel endpoints.
@@ -649,9 +661,9 @@ impl<Request, Response, Assertion> Clone for MockService<Request, Response, Asse
     }
 }
 
-impl<Request, Response> ResponseSender<Request, Response> {
+impl<Request, Response, Error> ResponseSender<Request, Response, Error> {
     /// Create a [`ResponseSender`] for a given `request`.
-    fn new(request: Request) -> (Self, oneshot::Receiver<Result<Response, BoxError>>) {
+    fn new(request: Request) -> (Self, oneshot::Receiver<Result<Response, Error>>) {
         let (response_sender, response_receiver) = oneshot::channel();
 
         (
@@ -672,7 +684,7 @@ impl<Request, Response> ResponseSender<Request, Response> {
     /// sent.
     ///
     /// If this method is not called, the caller will panic.
-    pub fn respond(self, response: impl ResponseResult<Response>) {
+    pub fn respond(self, response: impl ResponseResult<Response, Error>) {
         let _ = self.response_sender.send(response.into_result());
     }
 }
@@ -700,22 +712,22 @@ impl AssertionType for PropTestAssertion {}
 ///
 /// This allows the [`ResponseSender::respond`] method to receive either a [`Result`] or just the
 /// response type that is wrapped in an `Ok` variant.
-pub trait ResponseResult<Response> {
+pub trait ResponseResult<Response, Error> {
     /// Converts the type into a [`Result`] that can be sent as a response.
-    fn into_result(self) -> Result<Response, BoxError>;
+    fn into_result(self) -> Result<Response, Error>;
 }
 
-impl<Response> ResponseResult<Response> for Response {
-    fn into_result(self) -> Result<Response, BoxError> {
+impl<Response, Error> ResponseResult<Response, Error> for Response {
+    fn into_result(self) -> Result<Response, Error> {
         Ok(self)
     }
 }
 
-impl<Response, Error> ResponseResult<Response> for Result<Response, Error>
+impl<Response, Error> ResponseResult<Response, Error> for Result<Response, Error>
 where
     Error: std::error::Error + Send + Sync + 'static,
 {
-    fn into_result(self) -> Result<Response, BoxError> {
-        Ok(self?)
+    fn into_result(self) -> Result<Response, Error> {
+        self
     }
 }
