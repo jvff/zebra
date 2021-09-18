@@ -19,6 +19,9 @@
 //! # reactor.block_on(async {
 //! let mut mock_service = MockService::build().for_unit_tests();
 //! let mut service = mock_service.clone();
+//! #
+//! # // Add types to satisfy the compiler's type inference for the `Error` type.
+//! # let _typed_mock_service: MockService<_, _, _> = mock_service.clone();
 //!
 //! let call = tokio::spawn(mock_service.clone().oneshot("hello"));
 //!
@@ -299,7 +302,7 @@ impl<Request, Response, Error> MockService<Request, Response, PanicAssertion, Er
     /// #     .expect("Failed to build Tokio runtime");
     /// #
     /// # reactor.block_on(async {
-    /// #     let mut mock_service = MockService::build().for_unit_tests();
+    /// #     let mut mock_service: MockService<_, _, _> = MockService::build().for_unit_tests();
     /// #     let mut service = mock_service.clone();
     /// #
     /// let call = tokio::spawn(mock_service.clone().oneshot("request"));
@@ -349,7 +352,7 @@ impl<Request, Response, Error> MockService<Request, Response, PanicAssertion, Er
     /// #     .expect("Failed to build Tokio runtime");
     /// #
     /// # reactor.block_on(async {
-    /// #     let mut mock_service = MockService::build().for_unit_tests();
+    /// #     let mut mock_service: MockService<_, _, _> = MockService::build().for_unit_tests();
     /// #     let mut service = mock_service.clone();
     /// #
     /// let call = tokio::spawn(mock_service.clone().oneshot(1));
@@ -457,7 +460,8 @@ impl<Request, Response, Error> MockService<Request, Response, PropTestAssertion,
     /// #
     /// # reactor.block_on(async {
     /// #     let test_code = || async {
-    /// #         let mut mock_service = MockService::build().for_prop_tests();
+    /// #         let mut mock_service: MockService<_, _, _> =
+    /// #             MockService::build().for_prop_tests();
     /// #         let mut service = mock_service.clone();
     /// #
     /// let call = tokio::spawn(mock_service.clone().oneshot("request"));
@@ -516,7 +520,8 @@ impl<Request, Response, Error> MockService<Request, Response, PropTestAssertion,
     /// #
     /// # reactor.block_on(async {
     /// #     let test_code = || async {
-    /// #         let mut mock_service = MockService::build().for_prop_tests();
+    /// #         let mut mock_service: MockService<_, _, _> =
+    /// #             MockService::build().for_prop_tests();
     /// #         let mut service = mock_service.clone();
     /// #
     /// let call = tokio::spawn(mock_service.clone().oneshot(1));
