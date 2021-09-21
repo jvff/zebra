@@ -45,7 +45,7 @@ use std::{collections::HashMap, iter};
 pub const MIN_TRANSPARENT_COINBASE_MATURITY: u32 = 100;
 
 /// Arbitrary data inserted by miners into a coinbase transaction.
-#[derive(Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CoinbaseData(
     /// Invariant: this vec, together with the coinbase height, must be less than
     /// 100 bytes. We enforce this by only constructing CoinbaseData fields by
@@ -101,7 +101,7 @@ pub struct OutPoint {
 }
 
 /// A transparent input to a transaction.
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Input {
     /// A reference to an output of a previous transaction.
     PrevOut {
