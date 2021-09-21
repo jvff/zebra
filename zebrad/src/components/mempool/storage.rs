@@ -180,6 +180,8 @@ impl Storage {
         Outputs: IntoIterator,
         Outputs::Item: Eq + Hash + 'tx,
     {
+        // TODO: This algorithm should be improved to avoid a performance impact when the mempool
+        // size is increased (#2784).
         let new_outputs: HashSet<_> = extractor(&tx.transaction).into_iter().collect();
 
         self.verified
