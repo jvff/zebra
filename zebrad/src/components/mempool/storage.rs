@@ -78,7 +78,7 @@ impl Storage {
         // nullifier already revealed by another transaction in the mempool, reject that
         // transaction.
         //
-        // TODO: Consider replacing the transaction in the mempool if the fee is higher (#xxxx).
+        // TODO: Consider replacing the transaction in the mempool if the fee is higher (#2781).
         if self.check_spend_conflicts(&tx) {
             self.rejected.insert(tx.id, State::SpendConflict);
             return Err(MempoolError::Rejected);
