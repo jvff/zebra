@@ -190,4 +190,11 @@ impl Storage {
             .flat_map(|tx| extractor(&tx.transaction))
             .any(|output| new_outputs.contains(&output))
     }
+
+    /// Clears the whole mempool storage.
+    #[allow(dead_code)]
+    pub fn clear(&mut self) {
+        self.verified.clear();
+        self.rejected.clear();
+    }
 }
