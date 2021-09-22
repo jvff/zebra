@@ -1,9 +1,14 @@
-use std::ops::RangeBounds;
+use std::{convert::TryFrom, ops::RangeBounds};
 
 use super::*;
 
 use zebra_chain::{
-    block::Block, parameters::Network, serialization::ZcashDeserializeInto, transaction::UnminedTx,
+    amount::Amount,
+    block::{self, Block},
+    parameters::{Network, NetworkUpgrade},
+    serialization::ZcashDeserializeInto,
+    transaction::{LockTime, UnminedTx},
+    transparent,
 };
 
 use color_eyre::eyre::Result;
@@ -99,6 +104,55 @@ fn mempool_storage_basic_for_network(network: Network) -> Result<()> {
     Ok(())
 }
 
+#[test]
+fn conflicting_transactions_are_rejected() {
+    let mut storage = Storage::default();
+
+    let mut inputs = inputs_from_blocks(.., Network::Mainnet);
+
+    let shared_input = inputs
+        .next()
+        .expect("At least one input from unmined blocks");
+    let first_transaction_input = inputs
+        .next()
+        .expect("At least two inputs from unmined blocks");
+    let second_transaction_input = inputs
+        .next()
+        .expect("At least three inputs from unmined blocks");
+
+    let first_transaction =
+        mock_transparent_transaction(vec![shared_input.clone(), first_transaction_input]);
+    let second_transaction =
+        mock_transparent_transaction(vec![shared_input, second_transaction_input]);
+
+    let first_transaction_id = first_transaction.id;
+    let second_transaction_id = second_transaction.id;
+
+    // Test inserting the first then the second
+    assert_eq!(
+        storage.insert(first_transaction.clone()),
+        Ok(first_transaction_id)
+    );
+    assert_eq!(
+        storage.insert(second_transaction.clone()),
+        Err(MempoolError::Rejected)
+    );
+    assert!(storage.contains_rejected(&second_transaction_id));
+
+    storage.clear();
+
+    // Test inserting the second then the first
+    assert_eq!(
+        storage.insert(second_transaction),
+        Ok(second_transaction_id)
+    );
+    assert_eq!(
+        storage.insert(first_transaction),
+        Err(MempoolError::Rejected)
+    );
+    assert!(storage.contains_rejected(&first_transaction_id));
+}
+
 pub fn unmined_transactions_in_blocks(
     block_height_range: impl RangeBounds<u32>,
     network: Network,
@@ -121,4 +175,55 @@ pub fn unmined_transactions_in_blocks(
     selected_blocks
         .flat_map(|block| block.transactions)
         .map(UnminedTx::from)
+}
+
+fn inputs_from_blocks(
+    block_height_range: impl RangeBounds<u32>,
+    network: Network,
+) -> impl DoubleEndedIterator<Item = transparent::Input> {
+    // Create an unlock script that allows any other transaction to spend the UTXO. This is a
+    // script with a single opcode that accepts the transaction (pushes true on the stack).
+    let accepting_script = transparent::Script::new(&[1, 1]);
+
+    unmined_transactions_in_blocks(block_height_range, network)
+        // Isolate the `Arc<Transaction>`
+        .map(|unmined_transaction| unmined_transaction.transaction)
+        // Filter out coinbase transactions
+        .filter(|transaction| !transaction.has_any_coinbase_inputs())
+        // Build an outpoint for every UTXO created by a transaction
+        .flat_map(|transaction| {
+            let output_count = transaction.outputs().len() as u32;
+            let transaction_hash = transaction.hash();
+
+            (0..output_count).map(move |index| transparent::OutPoint {
+                hash: transaction_hash,
+                index,
+            })
+        })
+        // Transform the outpoint into an input
+        .map(move |outpoint| transparent::Input::PrevOut {
+            outpoint,
+            unlock_script: accepting_script.clone(),
+            sequence: 0xffffffff,
+        })
+}
+
+fn mock_transparent_transaction(inputs: Vec<transparent::Input>) -> UnminedTx {
+    // A script with a single opcode that accepts the transaction (pushes true on the stack)
+    let accepting_script = transparent::Script::new(&[1, 1]);
+
+    let output = transparent::Output {
+        value: Amount::try_from(1).expect("1 is non-negative"),
+        lock_script: accepting_script,
+    };
+
+    UnminedTx::from(Transaction::V5 {
+        network_upgrade: NetworkUpgrade::Nu5,
+        lock_time: LockTime::min_lock_time(),
+        expiry_height: block::Height::MAX,
+        inputs,
+        outputs: vec![output],
+        sapling_shielded_data: None,
+        orchard_shielded_data: None,
+    })
 }
