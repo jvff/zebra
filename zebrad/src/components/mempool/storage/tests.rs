@@ -120,11 +120,18 @@ fn conflicting_transactions_are_rejected() {
         .next()
         .expect("At least three inputs from unmined blocks");
 
-    let first_transaction =
-        mock_transparent_transaction(vec![shared_input.clone(), first_transaction_input]);
-    let second_transaction =
-        mock_transparent_transaction(vec![shared_input, second_transaction_input]);
+    assert_only_one_transaction_is_inserted(
+        &mut storage,
+        mock_transparent_transaction(vec![shared_input.clone(), first_transaction_input]),
+        mock_transparent_transaction(vec![shared_input, second_transaction_input]),
+    );
+}
 
+fn assert_only_one_transaction_is_inserted(
+    storage: &mut Storage,
+    first_transaction: UnminedTx,
+    second_transaction: UnminedTx,
+) {
     let first_transaction_id = first_transaction.id;
     let second_transaction_id = second_transaction.id;
 
