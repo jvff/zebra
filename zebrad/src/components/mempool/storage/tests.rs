@@ -7,6 +7,7 @@ use zebra_chain::{
     block::{self, Block},
     parameters::{Network, NetworkUpgrade},
     serialization::ZcashDeserializeInto,
+    sprout,
     transaction::{LockTime, UnminedTx},
     transparent,
 };
@@ -105,10 +106,33 @@ fn mempool_storage_basic_for_network(network: Network) -> Result<()> {
 }
 
 #[test]
-fn conflicting_transactions_are_rejected() {
+fn transactions_spending_the_same_utxo_are_rejected() {
     let mut storage = Storage::default();
 
     let mut inputs = inputs_from_blocks(.., Network::Mainnet);
+
+    let shared_input = inputs
+        .next()
+        .expect("At least one input from unmined blocks");
+    let first_transaction_input = inputs
+        .next()
+        .expect("At least two inputs from unmined blocks");
+    let second_transaction_input = inputs
+        .next()
+        .expect("At least three inputs from unmined blocks");
+
+    assert_only_one_transaction_is_inserted(
+        &mut storage,
+        mock_transparent_transaction(vec![shared_input.clone(), first_transaction_input]),
+        mock_transparent_transaction(vec![shared_input, second_transaction_input]),
+    );
+}
+
+#[test]
+fn transactions_revealing_the_same_sprout_nullifier_are_rejected() {
+    let mut storage = Storage::default();
+
+    let mut inputs = sprout_nullifiers_from_blocks(.., Network::Mainnet);
 
     let shared_input = inputs
         .next()
@@ -213,6 +237,16 @@ fn inputs_from_blocks(
             unlock_script: accepting_script.clone(),
             sequence: 0xffffffff,
         })
+}
+
+fn sprout_nullifiers_from_blocks(
+    block_height_range: impl RangeBounds<u32>,
+    network: Network,
+) -> impl Iterator<Item = sprout::Nullifier> {
+    unmined_transactions_in_blocks(block_height_range, network)
+        // Isolate the `Arc<Transaction>`
+        .map(|unmined_transaction| unmined_transaction.transaction)
+        .flat_map(|transaction| transaction.sprout_nullifiers().copied().collect::<Vec<_>>())
 }
 
 fn mock_transparent_transaction(inputs: Vec<transparent::Input>) -> UnminedTx {
