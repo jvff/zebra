@@ -112,17 +112,17 @@ impl SpendConflictTestInput {
 /// A spend conflict valid for V4 transactions.
 #[derive(Arbitrary, Clone, Debug)]
 enum SpendConflictForTransactionV4 {
-    Transparent(TransparentSpendConflict),
-    Sprout(SproutSpendConflict),
-    Sapling(SaplingSpendConflict<sapling::PerSpendAnchor>),
+    Transparent(Box<TransparentSpendConflict>),
+    Sprout(Box<SproutSpendConflict>),
+    Sapling(Box<SaplingSpendConflict<sapling::PerSpendAnchor>>),
 }
 
 /// A spend conflict valid for V5 transactions.
 #[derive(Arbitrary, Clone, Debug)]
 enum SpendConflictForTransactionV5 {
-    Transparent(TransparentSpendConflict),
-    Sapling(SaplingSpendConflict<sapling::SharedAnchor>),
-    Orchard(OrchardSpendConflict),
+    Transparent(Box<TransparentSpendConflict>),
+    Sapling(Box<SaplingSpendConflict<sapling::SharedAnchor>>),
+    Orchard(Box<OrchardSpendConflict>),
 }
 
 /// A conflict caused by spending the same UTXO.
