@@ -1,12 +1,13 @@
-use super::super::*;
-use color_eyre::Report;
 use std::collections::HashSet;
-use storage::tests::unmined_transactions_in_blocks;
+
+use color_eyre::Report;
 use tower::{ServiceBuilder, ServiceExt};
 
 use zebra_consensus::Config as ConsensusConfig;
 use zebra_state::Config as StateConfig;
 use zebra_test::mock_service::MockService;
+
+use super::super::{storage::tests::unmined_transactions_in_blocks, *};
 
 #[tokio::test]
 async fn mempool_service_basic() -> Result<(), Report> {
