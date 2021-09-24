@@ -81,7 +81,6 @@ pub struct Mempool {
     tx_downloads: Pin<Box<InboundTxDownloads>>,
 
     /// Allows checking if we are near the tip to enable/disable the mempool.
-    #[allow(dead_code)]
     sync_status: SyncStatus,
 
     /// Allows the detection of chain tip resets.
@@ -147,10 +146,14 @@ impl Mempool {
     ///
     /// - a chain reset has been detected, causing some blocks to be reverted and requiring the
     ///   mempool transactions to be validated again.
+    /// - the chain is being synchronized to the tip again, so the mempool should be disabled until
+    ///   the synchronization finishes. This can happen if the node becomes offline for a while and
+    ///   the chain tip falls behind the rest of the network.
     fn should_clear_storage(&mut self) -> bool {
         let chain_reset_detected = self.chain_tip_change.has_reset();
+        let chain_is_synchronizing = || !self.sync_status.is_close_to_tip();
 
-        chain_reset_detected
+        chain_reset_detected || chain_is_synchronizing()
     }
 }
 
@@ -161,7 +164,8 @@ impl Service<Request> for Mempool {
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        // Clear the mempool if there has been a chain tip reset.
+        // Clear the mempool if there has been a chain tip reset or if the syncer starts
+        // syncing large number of blocks.
         self.maybe_clear_storage();
 
         // Clean up completed download tasks and add to mempool if successful
