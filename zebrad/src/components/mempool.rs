@@ -49,10 +49,10 @@ type TxVerifier = Buffer<
 type InboundTxDownloads = TxDownloads<Timeout<Outbound>, Timeout<TxVerifier>, State>;
 
 #[derive(Debug, Eq, PartialEq)]
-#[allow(dead_code)]
 pub enum Request {
     TransactionIds,
     TransactionsById(HashSet<UnminedTxId>),
+    #[allow(dead_code)]
     RejectedTransactionIds(HashSet<UnminedTxId>),
     Queue(Vec<Gossip>),
 }
@@ -85,12 +85,10 @@ pub struct Mempool {
     sync_status: SyncStatus,
 
     /// Allows the detection of chain tip resets.
-    #[allow(dead_code)]
     chain_tip_change: ChainTipChange,
 }
 
 impl Mempool {
-    #[allow(dead_code)]
     pub(crate) fn new(
         _network: Network,
         outbound: Outbound,
