@@ -341,6 +341,13 @@ impl ChainTipChange {
         Some(action)
     }
 
+    /// Returns `true` if the chain has reset since the last time the tip was checked.
+    pub fn has_reset(&mut self) -> bool {
+        self.last_tip_change()
+            .map(|tip_action| tip_action.is_reset())
+            .unwrap_or(false)
+    }
+
     /// Return an action based on `block` and the last change we returned.
     fn action(&self, block: ChainTipBlock) -> TipAction {
         // check for an edge case that's dealt with by other code
