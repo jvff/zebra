@@ -14,6 +14,11 @@ use zebra_chain::{
 use super::super::{MempoolError, Storage};
 
 proptest! {
+    /// Test if a transaction that has a spend conflict with a transaction already in the mempool
+    /// is rejected.
+    ///
+    /// A spend conflict in this case is when two transactions spend the same UTXO or reveal the
+    /// same nullifier.
     #[test]
     fn conflicting_transactions_are_rejected(input in any::<SpendConflictTestInput>()) {
         let mut storage = Storage::default();
@@ -45,8 +50,13 @@ proptest! {
     }
 }
 
+/// Test input consisting of two transactions and a conflict to be applied to them.
+///
+/// When the conflict is applied, both transactions will have a shared spend (either a UTXO used as
+/// an input, or a nullifier revealed by both transactions).
 #[derive(Arbitrary, Debug)]
 enum SpendConflictTestInput {
+    /// Test V4 transactions to include Sprout nullifier conflicts.
     V4 {
         #[proptest(strategy = "Transaction::v4_strategy(LedgerState::default())")]
         first: Transaction,
@@ -57,6 +67,7 @@ enum SpendConflictTestInput {
         conflict: SpendConflictForTransactionV4,
     },
 
+    /// Test V5 transactions to include Orchard nullifier conflicts.
     V5 {
         #[proptest(strategy = "Transaction::v5_strategy(LedgerState::default())")]
         first: Transaction,
@@ -69,6 +80,7 @@ enum SpendConflictTestInput {
 }
 
 impl SpendConflictTestInput {
+    /// Return two transactions that have a spend conflict.
     pub fn conflicting_transactions(self) -> (UnminedTx, UnminedTx) {
         let (first, second) = match self {
             SpendConflictTestInput::V4 {
@@ -97,6 +109,7 @@ impl SpendConflictTestInput {
     }
 }
 
+/// A spend conflict valid for V4 transactions.
 #[derive(Arbitrary, Clone, Debug)]
 enum SpendConflictForTransactionV4 {
     Transparent(TransparentSpendConflict),
@@ -104,6 +117,7 @@ enum SpendConflictForTransactionV4 {
     Sapling(SaplingSpendConflict<sapling::PerSpendAnchor>),
 }
 
+/// A spend conflict valid for V5 transactions.
 #[derive(Arbitrary, Clone, Debug)]
 enum SpendConflictForTransactionV5 {
     Transparent(TransparentSpendConflict),
@@ -111,16 +125,19 @@ enum SpendConflictForTransactionV5 {
     Orchard(OrchardSpendConflict),
 }
 
+/// A conflict caused by spending the same UTXO.
 #[derive(Arbitrary, Clone, Debug)]
 struct TransparentSpendConflict {
     new_input: transparent::Input,
 }
 
+/// A conflict caused by revealing the same Sprout nullifier.
 #[derive(Arbitrary, Clone, Debug)]
 struct SproutSpendConflict {
     new_joinsplit_data: transaction::JoinSplitData<Groth16Proof>,
 }
 
+/// A conflict caused by revealing the same Sapling nullifier.
 #[derive(Clone, Debug)]
 struct SaplingSpendConflict<A: sapling::AnchorVariant + Clone> {
     new_spend: sapling::Spend<A>,
@@ -128,12 +145,16 @@ struct SaplingSpendConflict<A: sapling::AnchorVariant + Clone> {
     fallback_shielded_data: sapling::ShieldedData<A>,
 }
 
+/// A conflict caused by revealing the same Orchard nullifier.
 #[derive(Arbitrary, Clone, Debug)]
 struct OrchardSpendConflict {
     new_shielded_data: orchard::ShieldedData,
 }
 
 impl SpendConflictForTransactionV4 {
+    /// Apply a spend conflict to a V4 transaction.
+    ///
+    /// Changes the `transaction_v4` to include the spend that will result in a conflict.
     pub fn apply_to(self, transaction_v4: &mut Transaction) {
         let (inputs, joinsplit_data, sapling_shielded_data) = match transaction_v4 {
             Transaction::V4 {
@@ -155,6 +176,9 @@ impl SpendConflictForTransactionV4 {
 }
 
 impl SpendConflictForTransactionV5 {
+    /// Apply a spend conflict to a V5 transaction.
+    ///
+    /// Changes the `transaction_v5` to include the spend that will result in a conflict.
     pub fn apply_to(self, transaction_v5: &mut Transaction) {
         let (inputs, sapling_shielded_data, orchard_shielded_data) = match transaction_v5 {
             Transaction::V5 {
@@ -176,12 +200,24 @@ impl SpendConflictForTransactionV5 {
 }
 
 impl TransparentSpendConflict {
+    /// Apply a transparent spend conflict.
+    ///
+    /// Adds a new input to a transaction's list of transparent `inputs`. The transaction will then
+    /// conflict with any other transaction that also has that same new input.
     pub fn apply_to(self, inputs: &mut Vec<transparent::Input>) {
         inputs.push(self.new_input);
     }
 }
 
 impl SproutSpendConflict {
+    /// Apply a Sprout spend conflict.
+    ///
+    /// Ensures that a transaction's `joinsplit_data` has a nullifier used to represent a conflict.
+    /// If the transaction already has Sprout joinsplits, the first nullifier is replaced with the
+    /// new nullifier. Otherwise, a joinsplit is inserted with that new nullifier in the
+    /// transaction.
+    ///
+    /// The transaction will then conflict with any other transaction with the same new nullifier.
     pub fn apply_to(self, joinsplit_data: &mut Option<transaction::JoinSplitData<Groth16Proof>>) {
         if let Some(existing_joinsplit_data) = joinsplit_data.as_mut() {
             existing_joinsplit_data.first.nullifiers[0] =
@@ -192,6 +228,10 @@ impl SproutSpendConflict {
     }
 }
 
+/// Generate arbitrary [`SaplingSpendConflict`]s.
+///
+/// This had to be implemented manually because of the constraints required as a consequence of the
+/// generic type parameter.
 impl<A> Arbitrary for SaplingSpendConflict<A>
 where
     A: sapling::AnchorVariant + Clone + Debug + 'static,
@@ -217,6 +257,14 @@ where
 }
 
 impl<A: sapling::AnchorVariant + Clone> SaplingSpendConflict<A> {
+    /// Apply a Sapling spend conflict.
+    ///
+    /// Ensures that a transaction's `sapling_shielded_data` has a nullifier used to represent a
+    /// conflict. If the transaction already has Sapling shielded data, a new spend is added with
+    /// the new nullifier. Otherwise, a fallback instance of Sapling shielded data is inserted in
+    /// the transaction, and then the spend is added.
+    ///
+    /// The transaction will then conflict with any other transaction with the same new nullifier.
     pub fn apply_to(self, sapling_shielded_data: &mut Option<sapling::ShieldedData<A>>) {
         use sapling::TransferData::*;
 
@@ -238,6 +286,14 @@ impl<A: sapling::AnchorVariant + Clone> SaplingSpendConflict<A> {
 }
 
 impl OrchardSpendConflict {
+    /// Apply a Orchard spend conflict.
+    ///
+    /// Ensures that a transaction's `orchard_shielded_data` has a nullifier used to represent a
+    /// conflict. If the transaction already has Orchard shielded data, a new action is added with
+    /// the new nullifier. Otherwise, a fallback instance of Orchard shielded data that contains
+    /// the new action is inserted in the transaction.
+    ///
+    /// The transaction will then conflict with any other transaction with the same new nullifier.
     pub fn apply_to(self, orchard_shielded_data: &mut Option<orchard::ShieldedData>) {
         if let Some(shielded_data) = orchard_shielded_data.as_mut() {
             shielded_data.actions.first_mut().action.nullifier =
