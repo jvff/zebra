@@ -17,7 +17,7 @@ use zebra_chain::{
 use zebra_consensus::{error::TransactionError, transaction};
 use zebra_network as zn;
 use zebra_state as zs;
-use zebra_state::{ChainTipChange, TipAction};
+use zebra_state::ChainTipChange;
 
 pub use crate::BoxError;
 
@@ -133,6 +133,27 @@ impl Mempool {
         }
         Ok(())
     }
+
+    /// Clear the mempool if necessary.
+    ///
+    /// See [`Self::should_clear_storage`] for the conditions that lead to clearing the mempool.
+    fn maybe_clear_storage(&mut self) {
+        if self.should_clear_storage() {
+            self.storage.clear();
+        }
+    }
+
+    /// Check if the mempool should be cleared.
+    ///
+    /// The mempool should be cleared when:
+    ///
+    /// - a chain reset has been detected, causing some blocks to be reverted and requiring the
+    ///   mempool transactions to be validated again.
+    fn should_clear_storage(&mut self) -> bool {
+        let chain_reset_detected = self.chain_tip_change.has_reset();
+
+        chain_reset_detected
+    }
 }
 
 impl Service<Request> for Mempool {
@@ -143,9 +164,7 @@ impl Service<Request> for Mempool {
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         // Clear the mempool if there has been a chain tip reset.
-        if let Some(TipAction::Reset { .. }) = self.chain_tip_change.last_tip_change() {
-            self.storage.clear();
-        }
+        self.maybe_clear_storage();
 
         // Clean up completed download tasks and add to mempool if successful
         while let Poll::Ready(Some(r)) = self.tx_downloads.as_mut().poll_next(cx) {
