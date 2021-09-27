@@ -315,6 +315,7 @@ impl ChainTipChange {
 
         let action = self.action(block.clone());
 
+        println!("wait last_change_hash {:?}", block.hash);
         self.last_change_hash = Some(block.hash);
 
         Ok(action)
@@ -336,6 +337,7 @@ impl ChainTipChange {
 
         let action = self.action(block.clone());
 
+        println!("last last_change_hash {:?}", block.hash);
         self.last_change_hash = Some(block.hash);
 
         Some(action)
@@ -377,6 +379,12 @@ impl ChainTipChange {
         // Skipped blocks can include network upgrade activation blocks.
         // Fork changes can activate or deactivate a network upgrade.
         // So we must perform the same actions for network upgrades and skipped blocks.
+        println!(
+            "action: {:?} {:?} {:?}",
+            block.previous_block_hash,
+            self.last_change_hash,
+            NetworkUpgrade::is_activation_height(self.network, block.height)
+        );
         if Some(block.previous_block_hash) != self.last_change_hash
             || NetworkUpgrade::is_activation_height(self.network, block.height)
         {

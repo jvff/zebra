@@ -146,11 +146,13 @@ impl Service<Request> for Mempool {
             match tip_action {
                 // Clear the mempool if there has been a chain tip reset.
                 TipAction::Reset { .. } => {
+                    println!("Reset");
                     self.storage.clear();
                 }
                 // Cancel downloads/verifications of transactions with the same
                 // IDs as recently mined transactions.
                 TipAction::Grow { block } => {
+                    println!("Grow");
                     let txid_set = block.transaction_hashes.iter().collect();
                     self.tx_downloads.cancel(txid_set);
                 }

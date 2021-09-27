@@ -716,7 +716,9 @@ impl Service<Request> for StateService {
             }
             Request::Transaction(hash) => {
                 metrics::counter!("state.requests", 1, "type" => "transaction");
+                println!("Sync checking tx in state {:?}...", hash);
                 let rsp = Ok(self.best_transaction(hash)).map(Response::Transaction);
+                println!("Sync checking tx in state: {:?}", rsp);
                 async move { rsp }.boxed()
             }
             Request::Block(hash_or_height) => {

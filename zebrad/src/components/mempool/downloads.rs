@@ -149,7 +149,11 @@ where
         // task is scheduled for wakeup when the next task becomes ready.
         //
         // TODO: this would be cleaner with poll_map (#2693)
-        if let Some(join_result) = ready!(this.pending.poll_next(cx)) {
+        println!("Polling downloads... {}", this.pending.len());
+        let tmp = ready!(this.pending.poll_next(cx));
+        println!("poll_next returned {:?}", tmp);
+        if let Some(join_result) = tmp {
+            println!("Download&verify complete: {:?}", join_result);
             match join_result.expect("transaction download and verify tasks must not panic") {
                 Ok(tx) => {
                     this.cancel_handles.remove(&tx.id);
@@ -234,8 +238,10 @@ where
 
         let fut = async move {
             // Don't download/verify if the transaction is already in the state.
+            println!("Check if {:?} is in the state...", txid);
             Self::transaction_in_state(&mut state, txid).await?;
 
+            println!("Getting tip ({:?})...", txid);
             let height = match state.oneshot(zs::Request::Tip).await {
                 Ok(zs::Response::Tip(None)) => Err("no block at the tip".into()),
                 Ok(zs::Response::Tip(Some((height, _hash)))) => Ok(height),
@@ -248,6 +254,7 @@ where
                 Gossip::Id(txid) => {
                     let req = zn::Request::TransactionsById(std::iter::once(txid).collect());
 
+                    println!("Downloading... ({:?})...", txid);
                     let tx = match network.oneshot(req).await? {
                         zn::Response::Transactions(mut txs) => txs
                             .pop()
@@ -264,6 +271,7 @@ where
                 }
             };
 
+            println!("Verifying ({:?})...", txid);
             let result = verifier
                 .oneshot(tx::Request::Mempool {
                     transaction: tx.clone(),
@@ -290,6 +298,7 @@ where
             //       prefer? (Currently, select! chooses one at random.)
             tokio::select! {
                 _ = &mut cancel_rx => {
+                    println!("Downloads Cancelled {:?}", txid);
                     tracing::trace!("task cancelled prior to completion");
                     metrics::counter!("gossip.cancelled.count", 1);
                     Err(("canceled".into(), txid))
@@ -318,6 +327,7 @@ where
     /// Cancel download/verification tasks of transactions with the
     /// given transaction hash (see [`UnminedTxId::mined_id`]).
     pub fn cancel(&mut self, mined_ids: HashSet<&transaction::Hash>) {
+        println!("Cancelling {:?}", mined_ids);
         // TODO: this can be simplified with [`HashMap::drain_filter`] which
         // is currently nightly-only experimental API.
         let removed_txids: Vec<UnminedTxId> = self
@@ -329,7 +339,8 @@ where
 
         for txid in removed_txids {
             if let Some(handle) = self.cancel_handles.remove(&txid) {
-                let _ = handle.send(());
+                let r = handle.send(());
+                println!("Cancelled {:?} {:?}", txid, r);
             }
         }
     }
