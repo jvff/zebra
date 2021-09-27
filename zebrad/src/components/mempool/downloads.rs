@@ -256,9 +256,11 @@ where
 
                     println!("Downloading... ({:?})...", txid);
                     let tx = match network.oneshot(req).await? {
-                        zn::Response::Transactions(mut txs) => txs
-                            .pop()
-                            .expect("successful response has the transaction in it"),
+                        zn::Response::Transactions(mut txs) => {
+                            println!("Downloaded {:?}", txs);
+                            txs.pop()
+                                .expect("successful response has the transaction in it")
+                        }
                         _ => unreachable!("wrong response to transaction request"),
                     };
 

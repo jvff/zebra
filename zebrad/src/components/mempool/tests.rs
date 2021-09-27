@@ -327,7 +327,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
         .await
         .unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..1 {
         // Query the mempool just to poll it and make it cancel the download.
         let _response = mempool
             .ready_and()
@@ -336,6 +336,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
             .call(Request::TransactionIds)
             .await
             .unwrap();
+        tokio::task::yield_now().await;
     }
 
     // Check if download was cancelled.
