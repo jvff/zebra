@@ -1,6 +1,6 @@
 use proptest::prelude::*;
 use tokio::time;
-use tower::{buffer::Buffer, util::BoxService, ServiceExt};
+use tower::{buffer::Buffer, util::BoxService};
 
 use zebra_chain::{parameters::Network, transaction::UnminedTx};
 use zebra_consensus::{error::TransactionError, transaction as tx};
@@ -8,7 +8,7 @@ use zebra_network as zn;
 use zebra_state::{self as zs, ChainTipBlock, ChainTipSender};
 use zebra_test::mock_service::{MockService, PropTestAssertion};
 
-use super::super::{Mempool, Request};
+use super::super::Mempool;
 use crate::components::sync::{RecentSyncLengths, SyncStatus};
 
 /// A [`MockService`] representing the network service.
@@ -55,7 +55,7 @@ proptest! {
                 .expect("Inserting a transaction should succeed");
 
             // The first call to `poll_ready` shouldn't clear the storage yet.
-            dummy_service_call(&mut mempool).await;
+            mempool.dummy_call().await;
 
             prop_assert_eq!(mempool.storage().tx_ids().len(), 1);
 
@@ -63,7 +63,7 @@ proptest! {
             chain_tip_sender.set_finalized_tip(chain_tip);
 
             // This time a call to `poll_ready` should clear the storage.
-            dummy_service_call(&mut mempool).await;
+            mempool.dummy_call().await;
 
             prop_assert!(mempool.storage().tx_ids().is_empty());
 
@@ -108,7 +108,7 @@ proptest! {
                 .expect("Inserting a transaction should succeed");
 
             // The first call to `poll_ready` shouldn't clear the storage yet.
-            dummy_service_call(&mut mempool).await;
+            mempool.dummy_call().await;
 
             prop_assert_eq!(mempool.storage().tx_ids().len(), 1);
 
@@ -116,7 +116,7 @@ proptest! {
             mempool.disable(&mut recent_syncs).await;
 
             // This time a call to `poll_ready` should clear the storage.
-            dummy_service_call(&mut mempool).await;
+            mempool.dummy_call().await;
 
             // Enable the mempool again so the storage can be accessed.
             mempool.enable(&mut recent_syncs).await;
@@ -168,12 +168,4 @@ fn setup(
         recent_syncs,
         chain_tip_sender,
     )
-}
-
-/// Perform a dummy service call so that `poll_ready` is called.
-async fn dummy_service_call(mempool: &mut Mempool) {
-    mempool
-        .oneshot(Request::Queue(vec![]))
-        .await
-        .expect("Queuing no transactions shouldn't fail");
 }
