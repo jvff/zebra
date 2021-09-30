@@ -32,8 +32,8 @@ async fn mempool_service_basic() -> Result<(), Report> {
     let genesis_transaction = unmined_transactions
         .next()
         .expect("Missing genesis transaction");
-    let mut more_transactions = unmined_transactions;
-    let last_transaction = more_transactions.next_back().unwrap();
+    let last_transaction = unmined_transactions.next_back().unwrap();
+    let more_transactions = unmined_transactions;
 
     // Start the mempool service
     let mut service = Mempool::new(
@@ -127,6 +127,7 @@ async fn mempool_service_basic() -> Result<(), Report> {
     };
     assert_eq!(queued_responses.len(), 1);
     assert!(queued_responses[0].is_ok());
+    assert_eq!(service.tx_downloads().in_flight(), 1);
 
     Ok(())
 }
