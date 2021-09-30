@@ -113,9 +113,7 @@ proptest! {
             prop_assert_eq!(mempool.storage().tx_ids().len(), 1);
 
             // Simulate the synchronizer catching up to the network chain tip.
-            for _ in 0..10 {
-                recent_syncs.push_extend_tips_length(50);
-            }
+            mempool.disable(&mut recent_syncs).await;
 
             // This time a call to `poll_ready` should clear the storage.
             dummy_service_call(&mut mempool).await;
