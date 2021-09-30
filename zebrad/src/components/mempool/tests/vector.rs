@@ -424,13 +424,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
     assert_eq!(mempool.tx_downloads().in_flight(), 1);
 
     // Query the mempool to make it poll chain_tip_change
-    let _response = mempool
-        .ready_and()
-        .await
-        .unwrap()
-        .call(Request::TransactionIds)
-        .await
-        .unwrap();
+    mempool.dummy_call().await;
 
     // Push block 1 to the state
     state_service
@@ -444,13 +438,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
         .unwrap();
 
     // Query the mempool to make it poll chain_tip_change
-    let _response = mempool
-        .ready_and()
-        .await
-        .unwrap()
-        .call(Request::TransactionIds)
-        .await
-        .unwrap();
+    mempool.dummy_call().await;
 
     // Push block 2 to the state
     state_service
@@ -465,13 +453,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
     // result and the download future is removed.
     for _ in 0..2 {
         // Query the mempool just to poll it and make it cancel the download.
-        let _response = mempool
-            .ready_and()
-            .await
-            .unwrap()
-            .call(Request::TransactionIds)
-            .await
-            .unwrap();
+        mempool.dummy_call().await;
         // Sleep to avoid starvation and make sure the cancellation is picked up.
         time::sleep(time::Duration::from_millis(100)).await;
     }
