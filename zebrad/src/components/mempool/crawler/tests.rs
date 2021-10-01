@@ -109,7 +109,7 @@ proptest! {
             time::pause();
 
             // Mock end of chain sync to enable the mempool crawler.
-            recent_sync_lengths.push_extend_tips_length(0);
+            SyncStatus::sync_close_to_tip(&mut recent_sync_lengths);
 
             crawler_iteration(&mut peer_set, vec![transaction_ids.clone()]).await?;
 
@@ -150,7 +150,7 @@ proptest! {
             time::pause();
 
             // Mock end of chain sync to enable the mempool crawler.
-            recent_sync_lengths.push_extend_tips_length(0);
+            SyncStatus::sync_close_to_tip(&mut recent_sync_lengths);
 
             // Prepare to simulate download errors.
             let download_result_count = transaction_ids_and_responses.len();
