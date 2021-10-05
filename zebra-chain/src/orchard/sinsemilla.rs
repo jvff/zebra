@@ -205,7 +205,7 @@ mod tests {
     fn x_from_str(s: &str) -> pallas::Base {
         use group::ff::PrimeField;
 
-        pallas::Base::from_str(s).unwrap()
+        pallas::Base::from_str_vartime(s).unwrap()
     }
 
     #[test]
