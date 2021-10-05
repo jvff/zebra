@@ -129,10 +129,10 @@ impl Storage {
         // `retain()` removes it and returns `Some(UnminedTx)`. If it's not
         // present and nothing changes, returns `None`.
 
-        match self.verified.clone().iter().find(|tx| &tx.id == txid) {
+        match self.verified.iter().find(|tx| &tx.id == txid).cloned() {
             Some(tx) => {
                 self.verified.retain(|tx| &tx.id != txid);
-                Some(tx.clone())
+                Some(tx)
             }
             None => None,
         }
