@@ -4,8 +4,9 @@ use std::{
 };
 
 use zebra_chain::{
-    block,
+    block, orchard, sapling, sprout,
     transaction::{Transaction, UnminedTx, UnminedTxId},
+    transparent,
 };
 use zebra_consensus::error::TransactionError;
 
@@ -42,8 +43,21 @@ pub struct Storage {
     /// The set of verified transactions in the mempool. This is a
     /// cache of size [`MEMPOOL_SIZE`].
     verified: VecDeque<UnminedTx>,
+
     /// The set of rejected transactions by id, and their rejection reasons.
     rejected: HashMap<UnminedTxId, State>,
+
+    /// The set of spent out points by the verified transactions.
+    spent_outpoints: HashSet<transparent::OutPoint>,
+
+    /// The set of revealed Sprout nullifiers.
+    sprout_nullifiers: HashSet<sprout::Nullifier>,
+
+    /// The set of revealed Sapling nullifiers.
+    sapling_nullifiers: HashSet<sapling::Nullifier>,
+
+    /// The set of revealed Orchard nullifiers.
+    orchard_nullifiers: HashSet<orchard::Nullifier>,
 }
 
 impl Storage {
