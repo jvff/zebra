@@ -133,6 +133,7 @@ impl Storage {
         match self.verified.iter().find(|tx| &tx.id == txid).cloned() {
             Some(tx) => {
                 self.verified.retain(|tx| &tx.id != txid);
+                self.remove_outputs(&tx);
                 Some(tx)
             }
             None => None,
@@ -175,6 +176,21 @@ impl Storage {
         self.sprout_nullifiers.clear();
         self.sapling_nullifiers.clear();
         self.orchard_nullifiers.clear();
+    }
+
+    /// Removes the tracked transaction outputs from the mempool.
+    fn remove_outputs(&mut self, unmined_tx: &UnminedTx) {
+        let tx = &unmined_tx.transaction;
+
+        let spent_outpoints = tx.spent_outpoints().map(Cow::Owned);
+        let sprout_nullifiers = tx.sprout_nullifiers().map(Cow::Borrowed);
+        let sapling_nullifiers = tx.sapling_nullifiers().map(Cow::Borrowed);
+        let orchard_nullifiers = tx.orchard_nullifiers().map(Cow::Borrowed);
+
+        Self::remove_from_set(&mut self.spent_outpoints, spent_outpoints);
+        Self::remove_from_set(&mut self.sprout_nullifiers, sprout_nullifiers);
+        Self::remove_from_set(&mut self.sapling_nullifiers, sapling_nullifiers);
+        Self::remove_from_set(&mut self.orchard_nullifiers, orchard_nullifiers);
     }
 
     /// Checks if the `unmined_tx` transaction has spend conflicts with another transaction in the
