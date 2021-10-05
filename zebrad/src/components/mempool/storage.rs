@@ -1,11 +1,12 @@
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet, VecDeque},
     hash::Hash,
 };
 
 use zebra_chain::{
     block, orchard, sapling, sprout,
-    transaction::{Transaction, UnminedTx, UnminedTxId},
+    transaction::{UnminedTx, UnminedTxId},
     transparent,
 };
 use zebra_consensus::error::TransactionError;
@@ -176,37 +177,43 @@ impl Storage {
         self.orchard_nullifiers.clear();
     }
 
-    /// Checks if the `tx` transaction has spend conflicts with another transaction in the mempool.
+    /// Checks if the `unmined_tx` transaction has spend conflicts with another transaction in the
+    /// mempool.
     ///
     /// Two transactions have a spend conflict if they spent the same UTXO or if they reveal the
     /// same nullifier.
-    fn check_spend_conflicts(&self, tx: &UnminedTx) -> bool {
-        self.has_spend_conflicts(tx, Transaction::spent_outpoints)
-            || self.has_spend_conflicts(tx, Transaction::sprout_nullifiers)
-            || self.has_spend_conflicts(tx, Transaction::sapling_nullifiers)
-            || self.has_spend_conflicts(tx, Transaction::orchard_nullifiers)
+    fn check_spend_conflicts(&mut self, unmined_tx: &UnminedTx) -> bool {
+        let tx = &unmined_tx.transaction;
+
+        let new_spent_outpoints = tx.spent_outpoints().map(Cow::Owned);
+        let new_sprout_nullifiers = tx.sprout_nullifiers().map(Cow::Borrowed);
+        let new_sapling_nullifiers = tx.sapling_nullifiers().map(Cow::Borrowed);
+        let new_orchard_nullifiers = tx.orchard_nullifiers().map(Cow::Borrowed);
+
+        Self::has_spend_conflicts(&mut self.spent_outpoints, new_spent_outpoints)
+            || Self::has_spend_conflicts(&mut self.sprout_nullifiers, new_sprout_nullifiers)
+            || Self::has_spend_conflicts(&mut self.sapling_nullifiers, new_sapling_nullifiers)
+            || Self::has_spend_conflicts(&mut self.orchard_nullifiers, new_orchard_nullifiers)
     }
 
-    /// Checks if the `tx` transaction has any spend conflicts with the transactions in the mempool
-    /// for the provided output type obtained through the `extractor`.
-    fn has_spend_conflicts<'slf, 'tx, Extractor, Outputs>(
-        &'slf self,
-        tx: &'tx UnminedTx,
-        extractor: Extractor,
+    /// Checks if the `new_outputs` from a transaction conflict with the `existing_outputs` from
+    /// the transactions already in the mempool.
+    ///
+    /// Each output in the `new_outputs` list should be wrapped in a [`Cow`]. This allows this
+    /// generic method to support both borrowed and owned items.
+    fn has_spend_conflicts<'tx, Output>(
+        existing_outputs: &mut HashSet<Output>,
+        new_outputs: impl Iterator<Item = Cow<'tx, Output>>,
     ) -> bool
     where
-        'slf: 'tx,
-        Extractor: Fn(&'tx Transaction) -> Outputs,
-        Outputs: IntoIterator,
-        Outputs::Item: Eq + Hash + 'tx,
+        Output: Clone + Eq + Hash + 'tx,
     {
-        // TODO: This algorithm should be improved to avoid a performance impact when the mempool
-        // size is increased (#2784).
-        let new_outputs: HashSet<_> = extractor(&tx.transaction).into_iter().collect();
+        for new_output in new_outputs {
+            if !existing_outputs.insert(new_output.into_owned()) {
+                return true;
+            }
+        }
 
-        self.verified
-            .iter()
-            .flat_map(|tx| extractor(&tx.transaction))
-            .any(|output| new_outputs.contains(&output))
+        false
     }
 }
