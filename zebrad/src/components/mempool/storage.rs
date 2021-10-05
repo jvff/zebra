@@ -215,6 +215,10 @@ impl Storage {
     pub fn clear(&mut self) {
         self.verified.clear();
         self.rejected.clear();
+        self.spent_outpoints.clear();
+        self.sprout_nullifiers.clear();
+        self.sapling_nullifiers.clear();
+        self.orchard_nullifiers.clear();
     }
 
     /// Checks if the `tx` transaction has spend conflicts with another transaction in the mempool.
