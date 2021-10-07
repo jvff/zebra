@@ -88,6 +88,20 @@ impl Storage {
         // This will a evict transactions to open space for the new transaction if needed.
         self.verified.insert(tx);
 
+        // Once inserted, we evict transactions over the pool size limit.
+        while self.verified.transaction_count() > MEMPOOL_SIZE {
+            let evicted_tx = self
+                .verified
+                .evict_one()
+                .expect("mempool is empty, but was expected to be full");
+
+            let _ = self
+                .rejected
+                .insert(evicted_tx.id, StorageRejectionError::RandomlyEvicted);
+        }
+
+        assert!(self.verified.transaction_count() <= MEMPOOL_SIZE);
+
         Ok(tx_id)
     }
 
@@ -179,5 +193,6 @@ impl Storage {
     /// Clears the whole mempool storage.
     pub fn clear(&mut self) {
         self.verified.clear();
+        self.rejected.clear();
     }
 }
