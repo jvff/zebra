@@ -75,17 +75,11 @@ impl Storage {
             return Err(MempoolError::InMempool);
         }
 
-        // If `tx` spends an UTXO already spent by another transaction in the mempool or reveals a
-        // nullifier already revealed by another transaction in the mempool, reject that
-        // transaction.
-        if self.verified.has_spend_conflicts(&tx) {
-            self.rejected
-                .insert(tx.id, StorageRejectionError::SpendConflict);
-            return Err(StorageRejectionError::SpendConflict.into());
+        // Then, we try to insert into the pool. If this fails the transaction is rejected.
+        if let Err(rejection_error) = self.verified.insert(tx) {
+            self.rejected.insert(tx_id, rejection_error.clone());
+            return Err(rejection_error.into());
         }
-
-        // Then, we insert into the pool.
-        self.verified.insert(tx);
 
         // Once inserted, we evict transactions over the pool size limit.
         while self.verified.transaction_count() > MEMPOOL_SIZE {
