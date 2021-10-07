@@ -1,17 +1,10 @@
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet, VecDeque},
-    hash::Hash,
-};
+use std::collections::{HashMap, HashSet};
 
 use thiserror::Error;
 
-use zebra_chain::{
-    orchard, sapling, sprout,
-    transaction::{self, UnminedTx, UnminedTxId},
-    transparent,
-};
+use zebra_chain::transaction::{self, UnminedTx, UnminedTxId};
 
+use self::verified_set::VerifiedSet;
 use super::MempoolError;
 
 #[cfg(any(test, feature = "proptest-impl"))]
@@ -20,6 +13,9 @@ use proptest_derive::Arbitrary;
 #[cfg(test)]
 pub mod tests;
 
+mod verified_set;
+
+/// The maximum number of verified transactions to store in the mempool.
 const MEMPOOL_SIZE: usize = 2;
 
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
@@ -52,22 +48,10 @@ pub enum StorageRejectionError {
 pub struct Storage {
     /// The set of verified transactions in the mempool. This is a
     /// cache of size [`MEMPOOL_SIZE`].
-    verified: VecDeque<UnminedTx>,
+    verified: VerifiedSet,
 
     /// The set of rejected transactions by id, and their rejection reasons.
     rejected: HashMap<UnminedTxId, StorageRejectionError>,
-
-    /// The set of spent out points by the verified transactions.
-    spent_outpoints: HashSet<transparent::OutPoint>,
-
-    /// The set of revealed Sprout nullifiers.
-    sprout_nullifiers: HashSet<sprout::Nullifier>,
-
-    /// The set of revealed Sapling nullifiers.
-    sapling_nullifiers: HashSet<sapling::Nullifier>,
-
-    /// The set of revealed Orchard nullifiers.
-    orchard_nullifiers: HashSet<orchard::Nullifier>,
 }
 
 impl Storage {
@@ -87,38 +71,22 @@ impl Storage {
         //
         // Security: transactions must not get refreshed by new queries,
         // because that allows malicious peers to keep transactions live forever.
-        if self.verified.contains(&tx) {
+        if self.verified.contains(&tx.id) {
             return Err(MempoolError::InMempool);
         }
 
         // If `tx` spends an UTXO already spent by another transaction in the mempool or reveals a
         // nullifier already revealed by another transaction in the mempool, reject that
         // transaction.
-        if self.check_spend_conflicts(&tx) {
+        if self.verified.has_spend_conflicts(&tx) {
             self.rejected
                 .insert(tx.id, StorageRejectionError::SpendConflict);
             return Err(StorageRejectionError::SpendConflict.into());
         }
 
         // Then, we insert into the pool.
-        self.verified.push_front(tx);
-
-        // Once inserted, we evict transactions over the pool size limit in FIFO
-        // order.
-        //
-        // TODO: use random weighted eviction as specified in ZIP-401 (#2780)
-        if self.verified.len() > MEMPOOL_SIZE {
-            let newly_evicted: Vec<_> = self.verified.drain(MEMPOOL_SIZE..).collect();
-
-            for evicted_tx in newly_evicted {
-                let _ = self
-                    .rejected
-                    .insert(evicted_tx.id, StorageRejectionError::RandomlyEvicted);
-                self.remove_outputs(&evicted_tx);
-            }
-
-            assert_eq!(self.verified.len(), MEMPOOL_SIZE);
-        }
+        // This will a evict transactions to open space for the new transaction if needed.
+        self.verified.insert(tx);
 
         Ok(tx_id)
     }
@@ -126,7 +94,7 @@ impl Storage {
     /// Returns `true` if a [`UnminedTx`] matching an [`UnminedTxId`] is in
     /// the mempool.
     pub fn contains(&self, txid: &UnminedTxId) -> bool {
-        self.verified.iter().any(|tx| &tx.id == txid)
+        self.verified.contains(txid)
     }
 
     /// Remove [`UnminedTx`]es from the mempool via exact [`UnminedTxId`].
@@ -145,28 +113,8 @@ impl Storage {
     /// Does not add or remove from the 'rejected' tracking set.
     #[allow(dead_code)]
     pub fn remove_exact(&mut self, exact_wtxids: &HashSet<UnminedTxId>) -> usize {
-        let original_size = self.verified.len();
-
-        // Clippy is unable to detect that there will be a borrow conflict without the `collect`.
-        #[allow(clippy::needless_collect)]
-        let indices_to_remove: Vec<_> = self
-            .verified
-            .iter()
-            .enumerate()
-            .filter(|(_, tx)| exact_wtxids.contains(&tx.id))
-            .map(|(index, _)| index)
-            .collect();
-
-        for index_to_remove in indices_to_remove.into_iter().rev() {
-            let removed_tx = self
-                .verified
-                .remove(index_to_remove)
-                .expect("Index was obtained from the VecDeque");
-
-            self.remove_outputs(&removed_tx);
-        }
-
-        original_size - self.verified.len()
+        self.verified
+            .remove_all_that(|tx| exact_wtxids.contains(&tx.id))
     }
 
     /// Remove [`UnminedTx`]es from the mempool via non-malleable [`transaction::Hash`].
@@ -183,40 +131,20 @@ impl Storage {
     ///
     /// Does not add or remove from the 'rejected' tracking set.
     pub fn remove_same_effects(&mut self, mined_ids: &HashSet<transaction::Hash>) -> usize {
-        let original_size = self.verified.len();
-
-        // Clippy is unable to detect that there will be a borrow conflict without the `collect`.
-        #[allow(clippy::needless_collect)]
-        let indices_to_remove: Vec<_> = self
-            .verified
-            .iter()
-            .enumerate()
-            .filter(|(_, tx)| mined_ids.contains(&tx.id.mined_id()))
-            .map(|(index, _)| index)
-            .collect();
-
-        for index_to_remove in indices_to_remove.into_iter().rev() {
-            let removed_tx = self
-                .verified
-                .remove(index_to_remove)
-                .expect("Index was obtained from the VecDeque");
-
-            self.remove_outputs(&removed_tx);
-        }
-
-        original_size - self.verified.len()
+        self.verified
+            .remove_all_that(|tx| mined_ids.contains(&tx.id.mined_id()))
     }
 
     /// Returns the set of [`UnminedTxId`]s in the mempool.
     pub fn tx_ids(&self) -> Vec<UnminedTxId> {
-        self.verified.iter().map(|tx| tx.id).collect()
+        self.verified.transactions().map(|tx| tx.id).collect()
     }
 
     /// Returns the set of [`Transaction`][transaction::Transaction]s matching `tx_ids` in the
     /// mempool.
     pub fn transactions(&self, tx_ids: HashSet<UnminedTxId>) -> Vec<UnminedTx> {
         self.verified
-            .iter()
+            .transactions()
             .filter(|tx| tx_ids.contains(&tx.id))
             .cloned()
             .collect()
@@ -224,7 +152,7 @@ impl Storage {
 
     /// Returns the set of [`Transaction`][transaction::Transaction]s in the mempool.
     pub fn transactions_all(&self) -> Vec<UnminedTx> {
-        self.verified.iter().cloned().collect()
+        self.verified.transactions().cloned().collect()
     }
 
     /// Returns `true` if a [`UnminedTx`] matching an [`UnminedTxId`] is in
@@ -251,83 +179,5 @@ impl Storage {
     /// Clears the whole mempool storage.
     pub fn clear(&mut self) {
         self.verified.clear();
-        self.rejected.clear();
-        self.spent_outpoints.clear();
-        self.sprout_nullifiers.clear();
-        self.sapling_nullifiers.clear();
-        self.orchard_nullifiers.clear();
-    }
-
-    /// Removes the tracked transaction outputs from the mempool.
-    fn remove_outputs(&mut self, unmined_tx: &UnminedTx) {
-        let tx = &unmined_tx.transaction;
-
-        let spent_outpoints = tx.spent_outpoints().map(Cow::Owned);
-        let sprout_nullifiers = tx.sprout_nullifiers().map(Cow::Borrowed);
-        let sapling_nullifiers = tx.sapling_nullifiers().map(Cow::Borrowed);
-        let orchard_nullifiers = tx.orchard_nullifiers().map(Cow::Borrowed);
-
-        Self::remove_from_set(&mut self.spent_outpoints, spent_outpoints);
-        Self::remove_from_set(&mut self.sprout_nullifiers, sprout_nullifiers);
-        Self::remove_from_set(&mut self.sapling_nullifiers, sapling_nullifiers);
-        Self::remove_from_set(&mut self.orchard_nullifiers, orchard_nullifiers);
-    }
-
-    /// Checks if the `unmined_tx` transaction has spend conflicts with another transaction in the
-    /// mempool.
-    ///
-    /// Two transactions have a spend conflict if they spent the same UTXO or if they reveal the
-    /// same nullifier.
-    fn check_spend_conflicts(&mut self, unmined_tx: &UnminedTx) -> bool {
-        let tx = &unmined_tx.transaction;
-
-        let new_spent_outpoints = tx.spent_outpoints().map(Cow::Owned);
-        let new_sprout_nullifiers = tx.sprout_nullifiers().map(Cow::Borrowed);
-        let new_sapling_nullifiers = tx.sapling_nullifiers().map(Cow::Borrowed);
-        let new_orchard_nullifiers = tx.orchard_nullifiers().map(Cow::Borrowed);
-
-        Self::has_spend_conflicts(&mut self.spent_outpoints, new_spent_outpoints)
-            || Self::has_spend_conflicts(&mut self.sprout_nullifiers, new_sprout_nullifiers)
-            || Self::has_spend_conflicts(&mut self.sapling_nullifiers, new_sapling_nullifiers)
-            || Self::has_spend_conflicts(&mut self.orchard_nullifiers, new_orchard_nullifiers)
-    }
-
-    /// Checks if the `new_outputs` from a transaction conflict with the `existing_outputs` from
-    /// the transactions already in the mempool.
-    ///
-    /// Each output in the `new_outputs` list should be wrapped in a [`Cow`]. This allows this
-    /// generic method to support both borrowed and owned items.
-    fn has_spend_conflicts<'tx, Output>(
-        existing_outputs: &mut HashSet<Output>,
-        new_outputs: impl Iterator<Item = Cow<'tx, Output>>,
-    ) -> bool
-    where
-        Output: Clone + Eq + Hash + 'tx,
-    {
-        let mut inserted_outputs = Vec::with_capacity(new_outputs.size_hint().1.unwrap_or(0));
-
-        for new_output in new_outputs {
-            if existing_outputs.insert(new_output.clone().into_owned()) {
-                inserted_outputs.push(new_output);
-            } else {
-                Self::remove_from_set(existing_outputs, inserted_outputs);
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Removes some items from a [`HashSet`].
-    ///
-    /// Each item in the list of `items` should be wrapped in a [`Cow`]. This allows this generic
-    /// method to support both borrowed and owned items.
-    fn remove_from_set<'t, T>(set: &mut HashSet<T>, items: impl IntoIterator<Item = Cow<'t, T>>)
-    where
-        T: Clone + Eq + Hash + 't,
-    {
-        for item in items {
-            set.remove(&item);
-        }
     }
 }
