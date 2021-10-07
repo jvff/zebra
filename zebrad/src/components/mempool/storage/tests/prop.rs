@@ -111,8 +111,86 @@ impl SpendConflictTestInput {
     }
 }
 
+/// Test input consisting of three transactions and two conflicts to be applied to pairs of them.
+///
+/// When the conflicts are applied, the first and the second transactions will have a shared spend
+/// (either a UTXO used as an input, or a nullifier revealed by both transactions) and the second
+/// and third transactions will have a separate shared spend.
+#[derive(Arbitrary, Debug)]
+enum TwoSpendConflictsTestInput {
+    /// Test V4 transactions to include Sprout nullifier conflicts.
+    V4 {
+        #[proptest(strategy = "Transaction::v4_strategy(LedgerState::default())")]
+        first: Transaction,
+
+        #[proptest(strategy = "Transaction::v4_strategy(LedgerState::default())")]
+        second: Transaction,
+
+        #[proptest(strategy = "Transaction::v4_strategy(LedgerState::default())")]
+        third: Transaction,
+
+        #[proptest(strategy = "SpendConflictForTransactionV4::distinct_pair()")]
+        conflicts: (SpendConflictForTransactionV4, SpendConflictForTransactionV4),
+    },
+
+    /// Test V5 transactions to include Orchard nullifier conflicts.
+    V5 {
+        #[proptest(strategy = "Transaction::v5_strategy(LedgerState::default())")]
+        first: Transaction,
+
+        #[proptest(strategy = "Transaction::v5_strategy(LedgerState::default())")]
+        second: Transaction,
+
+        #[proptest(strategy = "Transaction::v5_strategy(LedgerState::default())")]
+        third: Transaction,
+
+        #[proptest(strategy = "SpendConflictForTransactionV5::distinct_pair()")]
+        conflicts: (SpendConflictForTransactionV5, SpendConflictForTransactionV5),
+    },
+}
+
+impl TwoSpendConflictsTestInput {
+    /// Return three transactions that have spend conflicts.
+    ///
+    /// The second transaction will share two spend conflicts, one with the first transaction and
+    /// one with the third transaction.
+    pub fn conflicting_transactions(self) -> (UnminedTx, UnminedTx, UnminedTx) {
+        let (first, second, third) = match self {
+            TwoSpendConflictsTestInput::V4 {
+                mut first,
+                mut second,
+                mut third,
+                conflicts: (first_conflict, second_conflict),
+            } => {
+                first_conflict.clone().apply_to(&mut first);
+                first_conflict.apply_to(&mut second);
+
+                second_conflict.clone().apply_to(&mut second);
+                second_conflict.apply_to(&mut third);
+
+                (first, second, third)
+            }
+            TwoSpendConflictsTestInput::V5 {
+                mut first,
+                mut second,
+                mut third,
+                conflicts: (first_conflict, second_conflict),
+            } => {
+                first_conflict.clone().apply_to(&mut first);
+                first_conflict.apply_to(&mut second);
+
+                second_conflict.clone().apply_to(&mut second);
+                second_conflict.apply_to(&mut third);
+
+                (first, second, third)
+            }
+        };
+
+        (first.into(), second.into(), third.into())
+    }
+}
 /// A spend conflict valid for V4 transactions.
-#[derive(Arbitrary, Clone, Debug)]
+#[derive(Arbitrary, Clone, Debug, Eq, PartialEq)]
 enum SpendConflictForTransactionV4 {
     Transparent(Box<TransparentSpendConflict>),
     Sprout(Box<SproutSpendConflict>),
@@ -120,7 +198,7 @@ enum SpendConflictForTransactionV4 {
 }
 
 /// A spend conflict valid for V5 transactions.
-#[derive(Arbitrary, Clone, Debug)]
+#[derive(Arbitrary, Clone, Debug, Eq, PartialEq)]
 enum SpendConflictForTransactionV5 {
     Transparent(Box<TransparentSpendConflict>),
     Sapling(Box<SaplingSpendConflict<sapling::SharedAnchor>>),
@@ -128,19 +206,19 @@ enum SpendConflictForTransactionV5 {
 }
 
 /// A conflict caused by spending the same UTXO.
-#[derive(Arbitrary, Clone, Debug)]
+#[derive(Arbitrary, Clone, Debug, Eq, PartialEq)]
 struct TransparentSpendConflict {
     new_input: transparent::Input,
 }
 
 /// A conflict caused by revealing the same Sprout nullifier.
-#[derive(Arbitrary, Clone, Debug)]
+#[derive(Arbitrary, Clone, Debug, Eq, PartialEq)]
 struct SproutSpendConflict {
     new_joinsplit_data: transaction::JoinSplitData<Groth16Proof>,
 }
 
 /// A conflict caused by revealing the same Sapling nullifier.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct SaplingSpendConflict<A: sapling::AnchorVariant + Clone> {
     new_spend: sapling::Spend<A>,
     new_shared_anchor: A::Shared,
@@ -148,7 +226,7 @@ struct SaplingSpendConflict<A: sapling::AnchorVariant + Clone> {
 }
 
 /// A conflict caused by revealing the same Orchard nullifier.
-#[derive(Arbitrary, Clone, Debug)]
+#[derive(Arbitrary, Clone, Debug, Eq, PartialEq)]
 struct OrchardSpendConflict {
     new_shielded_data: orchard::ShieldedData,
 }
@@ -175,6 +253,14 @@ impl SpendConflictForTransactionV4 {
             Sapling(sapling_conflict) => sapling_conflict.apply_to(sapling_shielded_data),
         }
     }
+
+    /// Generate a distinct pair of spend conflicts for V4 transactions.
+    pub fn distinct_pair() -> impl Strategy<Value = (Self, Self)> {
+        any::<(Self, Self)>()
+            .prop_filter("spend conflict pair was not distinct", |(first, second)| {
+                first != second
+            })
+    }
 }
 
 impl SpendConflictForTransactionV5 {
@@ -198,6 +284,14 @@ impl SpendConflictForTransactionV5 {
             Sapling(sapling_conflict) => sapling_conflict.apply_to(sapling_shielded_data),
             Orchard(orchard_conflict) => orchard_conflict.apply_to(orchard_shielded_data),
         }
+    }
+
+    /// Generate a distinct pair of spend conflicts for V5 transactions.
+    pub fn distinct_pair() -> impl Strategy<Value = (Self, Self)> {
+        any::<(Self, Self)>()
+            .prop_filter("spend conflict pair was not distinct", |(first, second)| {
+                first != second
+            })
     }
 }
 
