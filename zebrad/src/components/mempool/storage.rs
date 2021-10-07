@@ -85,7 +85,6 @@ impl Storage {
         }
 
         // Then, we insert into the pool.
-        // This will a evict transactions to open space for the new transaction if needed.
         self.verified.insert(tx);
 
         // Once inserted, we evict transactions over the pool size limit.
