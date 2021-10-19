@@ -13,6 +13,7 @@ use futures::{
     TryFutureExt,
 };
 use tokio::{net::TcpListener, sync::broadcast, time::Instant};
+use tokio_stream::wrappers::IntervalStream;
 use tower::{
     buffer::Buffer, discover::Change, layer::Layer, load::peak_ewma::PeakEwmaDiscover,
     util::BoxService, Service, ServiceExt,
@@ -424,8 +425,8 @@ where
     // prevents us from adding items to the stream and checking its length.
     handshakes.push(future::pending().boxed());
 
-    let mut crawl_timer =
-        tokio::time::interval(crawl_new_peer_interval).map(|tick| TimerCrawl { tick });
+    let mut crawl_timer = IntervalStream::new(tokio::time::interval(crawl_new_peer_interval))
+        .map(|tick| TimerCrawl { tick });
 
     loop {
         metrics::gauge!(
