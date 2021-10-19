@@ -7,7 +7,7 @@
 //! And it's unclear if these assumptions match the `zcashd` implementation.
 //! It should be refactored into a cleaner set of request/response pairs (#1515).
 
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, pin::Pin, sync::Arc};
 
 use futures::{
     future::{self, Either},
@@ -318,7 +318,7 @@ pub struct Connection<S, Tx> {
     /// A timeout for a client request. This is stored separately from
     /// State so that we can move the future out of it independently of
     /// other state handling.
-    pub(super) request_timer: Option<Sleep>,
+    pub(super) request_timer: Option<Pin<Box<Sleep>>>,
     pub(super) svc: S,
     /// A `mpsc::Receiver<ClientRequest>` that converts its results to
     /// `InProgressClientRequest`
@@ -758,11 +758,11 @@ where
                 // send a response before dropping tx.
                 let _ = tx.send(Ok(Response::Nil));
                 self.state = AwaitingRequest;
-                self.request_timer = Some(sleep(constants::REQUEST_TIMEOUT));
+                self.request_timer = Some(Box::pin(sleep(constants::REQUEST_TIMEOUT)));
             }
             Ok((new_state @ AwaitingResponse { .. }, None)) => {
                 self.state = new_state;
-                self.request_timer = Some(sleep(constants::REQUEST_TIMEOUT));
+                self.request_timer = Some(Box::pin(sleep(constants::REQUEST_TIMEOUT)));
             }
             Err((e, tx)) => {
                 let e = SharedPeerError::from(e);
