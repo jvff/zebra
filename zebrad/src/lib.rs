@@ -43,3 +43,4 @@ pub mod commands;
 pub mod config;
 pub mod prelude;
 pub mod sentry;
+pub mod utils;
