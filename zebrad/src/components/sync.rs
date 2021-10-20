@@ -19,7 +19,7 @@ use zebra_network as zn;
 use zebra_state as zs;
 
 use crate::{
-    async_utils::NowOrLater, components::sync::downloads::BlockDownloadVerifyError,
+    async_ext::NowOrLater, components::sync::downloads::BlockDownloadVerifyError,
     config::ZebradConfig, BoxError,
 };
 
