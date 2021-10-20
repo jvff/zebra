@@ -53,7 +53,7 @@ async fn mempool_service_disabled() -> Result<(), Report> {
 
     // Test if the mempool answers correctly (i.e. is enabled)
     let response = service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::TransactionIds)
@@ -68,7 +68,7 @@ async fn mempool_service_disabled() -> Result<(), Report> {
     // Use the ID of the last transaction in the list
     let txid = more_transactions.last().unwrap().transaction.id;
     let response = service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![txid.into()]))
@@ -90,7 +90,7 @@ async fn mempool_service_disabled() -> Result<(), Report> {
 
     // Test if the mempool returns no transactions when disabled
     let response = service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::TransactionIds)
@@ -109,7 +109,7 @@ async fn mempool_service_disabled() -> Result<(), Report> {
 
     // Test if the mempool returns to Queue requests correctly when disabled
     let response = service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![txid.into()]))
@@ -151,7 +151,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
         .zcash_deserialize_into()
         .unwrap();
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -165,7 +165,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
 
     // Push block 1 to the state
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -182,7 +182,7 @@ async fn mempool_cancel_mined() -> Result<(), Report> {
     // which cancels all downloads.
     let txid = block2.transactions[0].unmined_id();
     let response = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![txid.into()]))
@@ -244,7 +244,7 @@ async fn mempool_cancel_downloads_after_network_upgrade() -> Result<(), Report> 
         .zcash_deserialize_into()
         .unwrap();
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -256,7 +256,7 @@ async fn mempool_cancel_downloads_after_network_upgrade() -> Result<(), Report> 
     // Queue transaction from block 2 for download
     let txid = block2.transactions[0].unmined_id();
     let response = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![txid.into()]))
@@ -276,7 +276,7 @@ async fn mempool_cancel_downloads_after_network_upgrade() -> Result<(), Report> 
     // Push block 1 to the state. This is considered a network upgrade,
     // and thus must cancel all pending transaction downloads.
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -317,7 +317,7 @@ async fn mempool_failed_verification_is_rejected() -> Result<(), Report> {
         .zcash_deserialize_into()
         .unwrap();
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -329,7 +329,7 @@ async fn mempool_failed_verification_is_rejected() -> Result<(), Report> {
     // Queue first transaction for verification
     // (queue the transaction itself to avoid a download).
     let request = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![rejected_tx.transaction.clone().into()]));
@@ -356,7 +356,7 @@ async fn mempool_failed_verification_is_rejected() -> Result<(), Report> {
     // Try to queue the same transaction by its ID and check if it's correctly
     // rejected.
     let response = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![rejected_tx.transaction.id.into()]))
@@ -400,7 +400,7 @@ async fn mempool_failed_download_is_not_rejected() -> Result<(), Report> {
         .zcash_deserialize_into()
         .unwrap();
     state_service
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(zebra_state::Request::CommitFinalizedBlock(
@@ -411,7 +411,7 @@ async fn mempool_failed_download_is_not_rejected() -> Result<(), Report> {
 
     // Queue second transaction for download and verification.
     let request = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![rejected_valid_tx
@@ -443,7 +443,7 @@ async fn mempool_failed_download_is_not_rejected() -> Result<(), Report> {
     // Try to queue the same transaction by its ID and check if it's not being
     // rejected.
     let response = mempool
-        .ready_and()
+        .ready()
         .await
         .unwrap()
         .call(Request::Queue(vec![rejected_valid_tx
