@@ -58,7 +58,7 @@ where
         let connector_span = info_span!("connector", peer = ?connected_addr);
         async move {
             let stream = TcpStream::connect(addr).await?;
-            hs.ready_and().await?;
+            hs.ready().await?;
             let client = hs.call((stream, connected_addr)).await?;
             Ok(Change::Insert(addr, client))
         }
