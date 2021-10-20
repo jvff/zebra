@@ -1,4 +1,4 @@
-//! Helper utilities for development.
+//! Extensions used in [`Future`]s and async code.
 
 mod now_or_later;
 
