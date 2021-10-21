@@ -46,7 +46,7 @@ pub mod zip0244;
 /// for example) and that means that the next test will already start with an incorrect timer
 /// state.
 pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-    tokio::runtime::Builder::new_multi_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("Failed to create Tokio runtime")
