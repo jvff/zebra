@@ -23,10 +23,6 @@ impl MetricsEndpoint {
                     // Expose binary metadata to metrics, using a single time series with
                     // value 1:
                     //     https://www.robustperception.io/exposing-the-software-version-to-prometheus
-                    //
-                    // We manually expand the metrics::increment!() macro because it only
-                    // supports string literals for metrics names, preventing us from
-                    // using concat!() to build the name.
                     metrics::increment_counter!(format!("{}.build.info", env!("CARGO_PKG_NAME")));
                 }
                 Err(e) => panic!(
