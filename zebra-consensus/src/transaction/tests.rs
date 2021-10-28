@@ -1128,7 +1128,7 @@ fn v5_with_sapling_spends() {
     });
 }
 
-/// Test if a V4 transaction with a duplicate Sapling spend is rejected by the verifier.
+/// Test if a V5 transaction with a duplicate Sapling spend is rejected by the verifier.
 #[test]
 fn v5_with_duplicate_sapling_spends() {
     zebra_test::init();
