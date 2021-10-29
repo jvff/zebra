@@ -27,7 +27,10 @@ impl MetricsEndpoint {
                     // We manually expand the metrics::increment!() macro because it only
                     // supports string literals for metrics names, preventing us from
                     // using concat!() to build the name.
-                    metrics::increment_counter!(format!("{}.build.info", env!("CARGO_PKG_NAME")));
+                    metrics::increment_counter!(
+                        format!("{}.build.info", env!("CARGO_PKG_NAME")),
+                        "version" => env!("CARGO_PKG_VERSION")
+                    );
                 }
                 Err(e) => panic!(
                     "Opening metrics endpoint listener {:?} failed: {:?}. \
