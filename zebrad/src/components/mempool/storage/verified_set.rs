@@ -228,5 +228,6 @@ impl VerifiedSet {
             "zcash.mempool.size.bytes",
             self.transactions_serialized_size as _
         );
+        metrics::gauge!("zcash.mempool.cost.bytes", self.total_cost as _);
     }
 }
