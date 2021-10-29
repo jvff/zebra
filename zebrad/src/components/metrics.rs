@@ -23,7 +23,10 @@ impl MetricsEndpoint {
                     // Expose binary metadata to metrics, using a single time series with
                     // value 1:
                     //     https://www.robustperception.io/exposing-the-software-version-to-prometheus
-                    metrics::increment_counter!(format!("{}.build.info", env!("CARGO_PKG_NAME")));
+                    metrics::increment_counter!(
+                        format!("{}.build.info", env!("CARGO_PKG_NAME")),
+                        "version" => env!("CARGO_PKG_VERSION")
+                    );
                 }
                 Err(e) => panic!(
                     "Opening metrics endpoint listener {:?} failed: {:?}. \
