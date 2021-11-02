@@ -67,7 +67,7 @@ jobs:
       - name: Change target output directory on Windows
         # Windows doesn't have enough space on the D: drive, so we redirect the build output to the
         # larger C: drive.
-        # TODO: Remove this workaround once the build is more efficient.
+        # TODO: Remove this workaround once the build is more efficient (#3005).
         if: matrix.os == 'windows-latest'
         run: |
           mkdir C:\zebra-target
