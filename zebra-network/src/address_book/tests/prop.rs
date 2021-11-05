@@ -45,7 +45,7 @@ proptest! {
         let address_book = AddressBook::new_with_addrs(local_listener, Span::none(), addresses);
 
         for peer in address_book.reconnection_peers() {
-            prop_assert!(!peer.is_probably_unreachable());
+            prop_assert!(!peer.is_probably_unreachable(), "peer: {:?}", peer);
         }
     }
 }
