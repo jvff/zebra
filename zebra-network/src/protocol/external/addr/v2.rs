@@ -8,7 +8,7 @@
 use std::{
     convert::TryInto,
     io::Read,
-    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+    net::{IpAddr, SocketAddr},
 };
 
 use byteorder::{BigEndian, ReadBytesExt};
@@ -114,12 +114,14 @@ impl From<AddrV2> for Option<MetaAddr> {
 /// Unimplemented and unrecognised addresses are deserialized as `None`.
 /// Deserialization consumes the bytes for these addresses.
 impl ZcashDeserialize for AddrV2 {
-    fn zcash_deserialize<R: Read>(mut reader: R) -> Result<Self, SerializationError> {
+    fn zcash_deserialize<R: Read>(mut reader_instance: R) -> Result<Self, SerializationError> {
+        let reader = &mut reader_instance;
+
         // > uint32  Time that this node was last seen as connected to the network.
-        let untrusted_last_seen = (&mut reader).zcash_deserialize_into()?;
+        let untrusted_last_seen = reader.zcash_deserialize_into()?;
 
         // > Service bits. A CompactSize-encoded bit field that is 64 bits wide.
-        let untrusted_services: CompactSize64 = (&mut reader).zcash_deserialize_into()?;
+        let untrusted_services: CompactSize64 = reader.zcash_deserialize_into()?;
         let untrusted_services = PeerServices::from_bits_truncate(untrusted_services.into());
 
         // > Network identifier. An 8-bit value that specifies which network is addressed.
@@ -129,7 +131,7 @@ impl ZcashDeserialize for AddrV2 {
 
         // > CompactSize      The length in bytes of addr.
         // > uint8[sizeAddr]  Network address. The interpretation depends on networkID.
-        let addr: Vec<u8> = (&mut reader).zcash_deserialize_into()?;
+        let addr: Vec<u8> = reader.zcash_deserialize_into()?;
 
         // > uint16  Network port. If not relevant for the network this MUST be 0.
         let port = reader.read_u16::<BigEndian>()?;
@@ -142,43 +144,22 @@ impl ZcashDeserialize for AddrV2 {
 
         if network_id == 0x01 {
             // > 0x01  IPV4  4   IPv4 address (globally routed internet)
-
-            // > Clients MUST reject messages that contain addresses that have
-            // > a different length than specified in this table for a specific network ID,
-            // > as these are meaningless.
-            if addr.len() != ADDR_V2_IPV4_ADDR_SIZE {
-                return Err(SerializationError::Parse(
-                    "IPv4 field length did not match ADDR_V2_IPV4_ADDR_SIZE in addrv2 message",
-                ));
-            }
-
-            // > The IPV4 and IPV6 network IDs use addresses encoded in the usual way
-            // > for binary IPv4 and IPv6 addresses in network byte order (big endian).
-            let ip: [u8; ADDR_V2_IPV4_ADDR_SIZE] = addr.try_into().expect("just checked length");
-            let ip = Ipv4Addr::from(ip);
+            let ip = convert_addr_bytes_to_ip_addr::<ADDR_V2_IPV4_ADDR_SIZE>(addr)?;
 
             Ok(AddrV2::IpAddr {
                 untrusted_last_seen,
                 untrusted_services,
-                ip: ip.into(),
+                ip,
                 port,
             })
         } else if network_id == 0x02 {
             // > 0x02  IPV6  16  IPv6 address (globally routed internet)
-
-            if addr.len() != ADDR_V2_IPV6_ADDR_SIZE {
-                return Err(SerializationError::Parse(
-                    "IPv6 field length did not match ADDR_V2_IPV6_ADDR_SIZE in addrv2 message",
-                ));
-            }
-
-            let ip: [u8; ADDR_V2_IPV6_ADDR_SIZE] = addr.try_into().expect("just checked length");
-            let ip = Ipv6Addr::from(ip);
+            let ip = convert_addr_bytes_to_ip_addr::<ADDR_V2_IPV6_ADDR_SIZE>(addr)?;
 
             Ok(AddrV2::IpAddr {
                 untrusted_last_seen,
                 untrusted_services,
-                ip: ip.into(),
+                ip,
                 port,
             })
         } else {
@@ -210,4 +191,26 @@ impl TrustedPreallocate for AddrV2 {
         // the max allocation can never exceed (MAX_PROTOCOL_MESSAGE_LEN - 3) / META_ADDR_SIZE
         ((MAX_PROTOCOL_MESSAGE_LEN - 3) / ADDR_V2_MIN_SIZE) as u64
     }
+}
+
+fn convert_addr_bytes_to_ip_addr<const SIZE: usize>(
+    addr_bytes: Vec<u8>,
+) -> Result<IpAddr, SerializationError>
+where
+    IpAddr: From<[u8; SIZE]>,
+{
+    // > Clients MUST reject messages that contain addresses that have
+    // > a different length than specified in this table for a specific network ID,
+    // > as these are meaningless.
+    if addr_bytes.len() != SIZE {
+        return Err(SerializationError::Parse(
+            "IPv4 field length did not match the expected IP address size in addrv2 message",
+        ));
+    }
+
+    // > The IPV4 and IPV6 network IDs use addresses encoded in the usual way
+    // > for binary IPv4 and IPv6 addresses in network byte order (big endian).
+    let ip: [u8; SIZE] = addr_bytes.try_into().expect("just checked length");
+
+    Ok(IpAddr::from(ip))
 }
