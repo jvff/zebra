@@ -93,10 +93,7 @@ proptest! {
         let addr = addr.unwrap();
 
         let max_allocation: usize = MetaAddr::max_allocation().try_into().unwrap();
-        let mut smallest_disallowed_vec = Vec::with_capacity(max_allocation + 1);
-        for _ in 0..(MetaAddr::max_allocation() + 1) {
-            smallest_disallowed_vec.push(addr);
-        }
+        let mut smallest_disallowed_vec = vec![addr; max_allocation + 1];
         let smallest_disallowed_serialized = smallest_disallowed_vec
             .zcash_serialize_to_vec()
             .expect("Serialization to vec must succeed");
