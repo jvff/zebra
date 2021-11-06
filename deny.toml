@@ -99,6 +99,8 @@ allow-git = [
 
     # ticket #2523: replace unmaintained multiset
     "https://github.com/jmitchell/multiset",
+
+    "https://github.com/dconnolly/orchard"
 ]
 
 [sources.allow-org]
