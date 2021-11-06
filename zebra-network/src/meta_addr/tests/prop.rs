@@ -502,7 +502,7 @@ proptest! {
 
         let recently_seen = time_since_last_seen
             .map(|elapsed| elapsed <= MAX_PEER_TIME_UNSEEN)
-            .unwrap_or(true);
+            .unwrap_or(false);
 
         prop_assert_eq!(
             peer.was_not_recently_seen(),
