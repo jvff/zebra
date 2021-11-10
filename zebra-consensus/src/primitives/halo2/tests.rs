@@ -30,9 +30,7 @@ async fn verify_orchard_halo2_proofs<V>(
 ) -> Result<(), V::Error>
 where
     V: tower::Service<Item, Response = ()>,
-    <V as tower::Service<Item>>::Error: std::convert::From<
-        std::boxed::Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>,
-    >,
+    <V as tower::Service<Item>>::Error: From<tower::BoxError>,
     <V as tower::Service<Item>>::Error: std::fmt::Debug,
 {
     let mut async_checks = FuturesUnordered::new();
