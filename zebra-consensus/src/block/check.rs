@@ -7,7 +7,7 @@ use zebra_chain::{
     amount::{Amount, NonNegative},
     block::{Block, Hash, Header, Height},
     parameters::{Network, NetworkUpgrade},
-    transaction,
+    transaction, transparent,
     work::{difficulty::ExpandedDifficulty, equihash},
 };
 
@@ -143,37 +143,26 @@ pub fn subsidy_is_valid(block: &Block, network: Network) -> Result<(), BlockErro
         let funding_streams = subsidy::funding_streams::funding_stream_values(height, network)
             .expect("We always expect a funding stream hashmap response even if empty");
 
-        let funding_stream_amounts: HashSet<Amount<NonNegative>> = funding_streams
-            .iter()
-            .map(|(_receiver, amount)| *amount)
-            .collect();
-        let output_amounts = subsidy::general::output_amounts(coinbase);
-
-        // funding stream addresses
-        let mut found_outputs = HashSet::<FundingStreamReceiver>::new();
-        for receiver in FundingStreamReceiver::receivers() {
-            let address =
-                subsidy::funding_streams::funding_stream_address(height, network, receiver);
-
-            let outputs = subsidy::funding_streams::find_output_with_address(coinbase, address);
-            if !outputs.is_empty() {
-                found_outputs.insert(receiver);
-            }
-        }
-
         // Consensus rule:[Canopy onward] The coinbase transaction at block height `height`
         // MUST contain at least one output per funding stream `fs` active at `height`,
         // that pays `fs.Value(height)` zatoshi in the prescribed way to the stream's
         // recipient address represented by `fs.AddressList[fs.AddressIndex(height)]
-        if funding_stream_amounts.is_subset(&output_amounts) {
-            if found_outputs.len() == FUNDING_STREAM_RECEIVERS_NUMBER {
-                Ok(())
-            } else {
-                Err(SubsidyError::FundingStreamAddressNotFound)?
+        for (receiver, expected_amount) in funding_streams {
+            let address =
+                subsidy::funding_streams::funding_stream_address(height, network, receiver);
+
+            let output_amount: Amount<NonNegative> =
+                subsidy::funding_streams::find_output_with_address(coinbase, address)
+                    .map(transparent::Output::value)
+                    .fold(Ok(Amount::zero()), |sum, item| sum + item)
+                    .map_err(|_| SubsidyError::FundingStreamValueNotFound)?;
+
+            if output_amount != expected_amount {
+                Err(SubsidyError::FundingStreamValueNotFound)?;
             }
-        } else {
-            Err(SubsidyError::FundingStreamValueNotFound)?
         }
+
+        Ok(())
     } else {
         // Future halving, with no founders reward or funding streams
         Ok(())

@@ -121,34 +121,33 @@ pub fn funding_stream_address(
 /// as the given lock_script as described in [protocol specification §7.10][7.10]
 ///
 /// [7.10]: https://zips.z.cash/protocol/protocol.pdf#fundingstreams.
-pub fn check_script_form(lock_script: Script, address: Address) -> bool {
-    let mut address_hash = address
+pub fn check_script_form(lock_script: &Script, address: Address) -> bool {
+    let address_hash = address
         .zcash_serialize_to_vec()
         .expect("we should get address bytes here");
 
-    address_hash = address_hash[2..22].to_vec();
-    address_hash.insert(0, OpCode::Push20Bytes as u8);
-    address_hash.insert(0, OpCode::Hash160 as u8);
-    address_hash.insert(address_hash.len(), OpCode::Equal as u8);
-    if lock_script.as_raw_bytes().len() == address_hash.len()
-        && lock_script == Script::new(&address_hash)
-    {
-        return true;
-    }
-    false
+    let script_bytes = lock_script.as_raw_bytes();
+
+    script_bytes.len() == 23
+        && script_bytes[0] == OpCode::Hash160 as u8
+        && script_bytes[1] == OpCode::Push20Bytes as u8
+        && script_bytes[2..22] == address_hash[2..22]
+        && script_bytes[22] == OpCode::Equal as u8
 }
 
 /// Returns a list of outputs in `Transaction`, which have a script address equal to `Address`.
-pub fn find_output_with_address(transaction: &Transaction, address: Address) -> Vec<Output> {
+pub fn find_output_with_address(
+    transaction: &Transaction,
+    address: Address,
+) -> impl Iterator<Item = &Output> + '_ {
     transaction
         .outputs()
         .iter()
-        .filter(|o| check_script_form(o.lock_script.clone(), address))
-        .cloned()
-        .collect()
+        .filter(move |o| check_script_form(&o.lock_script, address))
 }
 
 /// Script opcodes needed to compare the `lock_script` with the funding stream reward address.
+#[repr(u8)]
 pub enum OpCode {
     Equal = 0x87,
     Hash160 = 0xa9,
