@@ -123,18 +123,12 @@ impl From<zebra_chain::orchard::ShieldedData> for Item {
 #[derive(Clone, Debug, Error, Eq, PartialEq)]
 pub enum Halo2Error {
     /// The constraint system is not satisfied.
+    #[error("Constraint system failure")]
     ConstraintSystemFailure,
-    /// Catchall for now until https://github.com/zcash/halo2/pull/394 is merged
-    Other,
-}
 
-impl fmt::Display for Halo2Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Halo2Error::ConstraintSystemFailure => write!(f, "Constraint system failure"),
-            _ => write!(f, "Unknown Halo2 error"),
-        }
-    }
+    /// Catchall for now until https://github.com/zcash/halo2/pull/394 is merged
+    #[error("Unknown Halo2 error")]
+    Other,
 }
 
 impl From<halo2::plonk::Error> for Halo2Error {
