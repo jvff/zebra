@@ -333,6 +333,23 @@ impl Transaction {
             return None;
         }
 
+        // Consensus rule:
+        //
+        // > The transaction must be finalized: either its locktime must be in the past (or less
+        // > than or equal to the current block height), or all of its sequence numbers must be
+        // > 0xffffffff.
+        //
+        // This means that the lock time is only enabled if at least one input sequence number is
+        // not `u32::MAX`. The code below will make the method return `None` if such sequence
+        // number isn't found.
+        //
+        // https://developer.bitcoin.org/devguide/transactions.html#non-standard-transactions
+        let _sequence_number_enabling_lock_time = self
+            .inputs()
+            .iter()
+            .map(transparent::Input::sequence)
+            .find(|sequence_number| *sequence_number != u32::MAX)?;
+
         Some(lock_time)
     }
 
