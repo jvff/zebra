@@ -302,6 +302,7 @@ where
             let (utxo_sender, mut utxo_receiver) = mpsc::unbounded_channel();
 
             // Do basic checks first
+            check::lock_time_has_passed(&tx, req.height(), req.block_time())?;
             check::has_inputs_and_outputs(&tx)?;
             check::has_enough_orchard_flags(&tx)?;
 
