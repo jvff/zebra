@@ -57,12 +57,12 @@ pub enum TransactionError {
     #[error("coinbase inputs MUST NOT exist in mempool")]
     CoinbaseInMempool,
 
-    #[error("transaction is locked until block height {}", _0.0)]
-    LockedUntilBlockHeight(block::Height),
+    #[error("transaction is locked until after block height {}", _0.0)]
+    LockedUntilAfterBlockHeight(block::Height),
 
-    #[error("transaction is locked until {0}")]
+    #[error("transaction is locked until after block time {0}")]
     #[cfg_attr(any(test, feature = "proptest-impl"), proptest(skip))]
-    LockedUntilDateTime(DateTime<Utc>),
+    LockedUntilAfterBlockTime(DateTime<Utc>),
 
     #[error("coinbase transaction failed subsidy validation")]
     #[cfg_attr(any(test, feature = "proptest-impl"), proptest(skip))]
