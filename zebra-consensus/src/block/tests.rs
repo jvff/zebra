@@ -483,10 +483,10 @@ fn funding_stream_validation_failure() -> Result<(), Report> {
     };
 
     // Validate it
-    let result = check::subsidy_is_valid(&block, network).unwrap_err();
-    let expected = BlockError::Transaction(TransactionError::Subsidy(
+    let result = check::subsidy_is_valid(&block, network);
+    let expected = Err(BlockError::Transaction(TransactionError::Subsidy(
         SubsidyError::FundingStreamNotFound,
-    ));
+    )));
     assert_eq!(expected, result);
 
     Ok(())
