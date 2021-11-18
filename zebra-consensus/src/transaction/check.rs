@@ -32,19 +32,21 @@ use crate::error::TransactionError;
 pub fn lock_time_has_passed(tx: &Transaction, height: Height) -> Result<(), TransactionError> {
     match tx.lock_time() {
         Some(LockTime::Height(unlock_height)) => {
-            if height < unlock_height {
-                return Err(TransactionError::LockedUntilBlockHeight(unlock_height));
+            if height > unlock_height {
+                Ok(())
+            } else {
+                Err(TransactionError::LockedUntilAfterBlockHeight(unlock_height))
             }
         }
         Some(LockTime::Time(unlock_time)) => {
-            if Utc::now() < unlock_time {
-                return Err(TransactionError::LockedUntilDateTime(unlock_time));
+            if Utc::now() > unlock_time {
+                Ok(())
+            } else {
+                Err(TransactionError::LockedUntilAfterBlockTime(unlock_time))
             }
         }
-        None => {}
+        None => Ok(()),
     }
-
-    Ok(())
 }
 
 /// Checks that the transaction has inputs and outputs.
