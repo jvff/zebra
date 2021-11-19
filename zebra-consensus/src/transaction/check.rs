@@ -32,6 +32,10 @@ use crate::error::TransactionError;
 pub fn lock_time_has_passed(tx: &Transaction, height: Height) -> Result<(), TransactionError> {
     match tx.lock_time() {
         Some(LockTime::Height(unlock_height)) => {
+            // > The transaction can be added to any block which has a greater height.
+            // The Bitcoin documentation is wrong or outdated here,
+            // so this code is based on the `zcashd` implementation at:
+            // https://github.com/zcash/zcash/blob/1a7c2a3b04bcad6549be6d571bfdff8af9a2c814/src/main.cpp#L722
             if height > unlock_height {
                 Ok(())
             } else {
@@ -39,6 +43,8 @@ pub fn lock_time_has_passed(tx: &Transaction, height: Height) -> Result<(), Tran
             }
         }
         Some(LockTime::Time(unlock_time)) => {
+            // > The transaction can be added to any block whose block time is greater than the locktime.
+            // https://developer.bitcoin.org/devguide/transactions.html#locktime-and-sequence-number
             if Utc::now() > unlock_time {
                 Ok(())
             } else {
