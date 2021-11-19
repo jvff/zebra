@@ -351,13 +351,17 @@ impl Transaction {
         // not `u32::MAX`.
         //
         // https://developer.bitcoin.org/devguide/transactions.html#non-standard-transactions
-        let _sequence_number_enabling_lock_time = self
+        let has_sequence_number_enabling_lock_time = self
             .inputs()
             .iter()
             .map(transparent::Input::sequence)
-            .find(|sequence_number| *sequence_number != u32::MAX)?;
+            .any(|sequence_number| sequence_number != u32::MAX);
 
-        Some(lock_time)
+        if has_sequence_number_enabling_lock_time {
+            Some(lock_time)
+        } else {
+            None
+        }
     }
 
     /// Get this transaction's expiry height, if any.
