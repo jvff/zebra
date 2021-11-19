@@ -345,10 +345,10 @@ impl Transaction {
         //
         // In `zcashd`, this rule applies to both coinbase and prevout input sequence numbers.
         //
-        // Unlike Bitcoin, Zcash allows transactions with no transparent inputs. These transactions only have shielded inputs.
-        // Surprisingly, the `zcashd` implementation ignores the lock time in these transactions.
-        // `zcashd` only checks the lock time when it finds a transparent input sequence number that is
-        // not `u32::MAX`.
+        // Unlike Bitcoin, Zcash allows transactions with no transparent inputs. These transactions
+        // only have shielded inputs. Surprisingly, the `zcashd` implementation ignores the lock
+        // time in these transactions. `zcashd` only checks the lock time when it finds a
+        // transparent input sequence number that is not `u32::MAX`.
         //
         // https://developer.bitcoin.org/devguide/transactions.html#non-standard-transactions
         let has_sequence_number_enabling_lock_time = self
