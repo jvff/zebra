@@ -29,14 +29,17 @@ use crate::error::TransactionError;
 /// [`Transaction::lock_time`] validates the transparent input sequence numbers, returning [`None`]
 /// if they indicate that the transaction is finalized by them. Otherwise, this function validates
 /// if the lock time is in the past.
-pub fn lock_time_has_passed(tx: &Transaction, height: Height) -> Result<(), TransactionError> {
+pub fn lock_time_has_passed(
+    tx: &Transaction,
+    block_height: Height,
+) -> Result<(), TransactionError> {
     match tx.lock_time() {
         Some(LockTime::Height(unlock_height)) => {
             // > The transaction can be added to any block which has a greater height.
             // The Bitcoin documentation is wrong or outdated here,
             // so this code is based on the `zcashd` implementation at:
             // https://github.com/zcash/zcash/blob/1a7c2a3b04bcad6549be6d571bfdff8af9a2c814/src/main.cpp#L722
-            if height > unlock_height {
+            if block_height > unlock_height {
                 Ok(())
             } else {
                 Err(TransactionError::LockedUntilAfterBlockHeight(unlock_height))
