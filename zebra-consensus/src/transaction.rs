@@ -9,11 +9,12 @@ use std::{
     task::{Context, Poll},
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use futures::{
     stream::{FuturesUnordered, StreamExt},
     FutureExt, TryFutureExt,
 };
+use lazy_static::lazy_static;
 use tokio::sync::mpsc;
 use tower::{Service, ServiceExt};
 use tracing::Instrument;
@@ -38,6 +39,14 @@ use crate::{error::TransactionError, primitives, script, BoxError};
 pub mod check;
 #[cfg(test)]
 mod tests;
+
+lazy_static! {
+    /// The amount of time left for a transaction to be unlocked to be accepted in the mempool.
+    ///
+    /// This is currently configured to 3 hours. This gives one hour of tolerance besides Zebra's
+    /// two hour tolerance for received block time values.
+    static ref MEMPOOL_BLOCK_TIME_TOLERANCE: Duration = Duration::hours(3);
+}
 
 /// Asynchronous transaction verification.
 ///
@@ -185,6 +194,14 @@ impl Request {
     pub fn height(&self) -> block::Height {
         match self {
             Request::Block { height, .. } | Request::Mempool { height, .. } => *height,
+        }
+    }
+
+    /// The block time used for lock time consensus rules validation.
+    pub fn block_time(&self) -> DateTime<Utc> {
+        match self {
+            Request::Block { time, .. } => *time,
+            Request::Mempool { .. } => Utc::now() + *MEMPOOL_BLOCK_TIME_TOLERANCE,
         }
     }
 
