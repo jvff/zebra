@@ -4,7 +4,7 @@
 
 use std::{borrow::Cow, collections::HashSet, convert::TryFrom, hash::Hash};
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 
 use zebra_chain::{
     amount::{Amount, NonNegative},
@@ -32,6 +32,7 @@ use crate::error::TransactionError;
 pub fn lock_time_has_passed(
     tx: &Transaction,
     block_height: Height,
+    block_time: DateTime<Utc>,
 ) -> Result<(), TransactionError> {
     match tx.lock_time() {
         Some(LockTime::Height(unlock_height)) => {
@@ -48,7 +49,7 @@ pub fn lock_time_has_passed(
         Some(LockTime::Time(unlock_time)) => {
             // > The transaction can be added to any block whose block time is greater than the locktime.
             // https://developer.bitcoin.org/devguide/transactions.html#locktime-and-sequence-number
-            if Utc::now() > unlock_time {
+            if block_time > unlock_time {
                 Ok(())
             } else {
                 Err(TransactionError::LockedUntilAfterBlockTime(unlock_time))
