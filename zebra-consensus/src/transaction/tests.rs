@@ -30,9 +30,6 @@ use super::{check, Request, Verifier};
 use crate::{error::TransactionError, script};
 use color_eyre::eyre::Report;
 
-#[cfg(test)]
-mod prop;
-
 #[test]
 fn v5_fake_transactions() -> Result<(), Report> {
     zebra_test::init();
