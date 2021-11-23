@@ -292,9 +292,7 @@ where
                         "the peer set requires at least one background task"
                     );
 
-                    for handle in handles {
-                        self.guards.push(handle);
-                    }
+                    self.guards.extend(handles);
 
                     None
                 }
