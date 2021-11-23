@@ -548,7 +548,7 @@ where
             .inventory_registry
             .peers(&hash)
             .filter(|&key| self.ready_services.contains_key(key))
-            .cloned()
+            .copied()
             .collect();
 
         // # Security
