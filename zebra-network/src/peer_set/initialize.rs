@@ -32,7 +32,7 @@ use crate::{
     address_book_updater::AddressBookUpdater,
     constants,
     meta_addr::{MetaAddr, MetaAddrChange},
-    peer::{self, HandshakeRequest, OutboundConnectorRequest},
+    peer::{self, HandshakeRequest, OutboundConnectorRequest, PeerMetaData},
     peer_set::{
         signals::MorePeers, ActiveConnectionCounter, CandidateSet, ConnectionTracker, PeerSet,
     },
@@ -143,7 +143,12 @@ where
         // Discover interprets an error as stream termination,
         // so discard any errored connections...
         .filter(|result| future::ready(result.is_ok()))
-        .map_ok(|(address, client)| Change::Insert(address, client));
+        // Pass the client version in the key type, so that the peer set can access it easily
+        .map_ok(|(address, client)| {
+            let peer = PeerMetaData::new(address, client.version);
+
+            Change::Insert(peer, client)
+        });
 
     // Create an mpsc channel for peerset demand signaling,
     // based on the maximum number of outbound peers.

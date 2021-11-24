@@ -72,6 +72,7 @@ use tower::{
 };
 
 use crate::{
+    peer::PeerMetaData,
     peer_set::{
         signals::{CancelClientWork, MorePeers},
         unready_service::{Error as UnreadyError, UnreadyService},
@@ -96,7 +97,7 @@ use crate::{
 /// Otherwise, malicious peers could interfere with other peers' `PeerSet` state.
 pub struct PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
+    D: Discover<Key = PeerMetaData> + Unpin,
     D::Service: Service<Request, Response = Response> + Load,
     D::Error: Into<BoxError>,
     <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
@@ -109,7 +110,7 @@ where
 
     /// Connected peers that are ready to receive requests from Zebra,
     /// or send requests to Zebra.
-    ready_services: HashMap<D::Key, D::Service>,
+    ready_services: HashMap<SocketAddr, D::Service>,
 
     /// A preselected ready service.
     ///
@@ -119,7 +120,7 @@ where
     /// If that peer is removed from `ready_services`, we must set the preselected peer to `None`.
     ///
     /// This is handled by [`PeerSet::take_ready_service`] and [`PeerSet::route_all`].
-    preselected_p2c_peer: Option<D::Key>,
+    preselected_p2c_peer: Option<SocketAddr>,
 
     /// Stores gossiped inventory hashes from connected peers.
     ///
@@ -128,10 +129,10 @@ where
 
     /// Connected peers that are handling a Zebra request,
     /// or Zebra is handling one of their requests.
-    unready_services: FuturesUnordered<UnreadyService<D::Key, D::Service, Request>>,
+    unready_services: FuturesUnordered<UnreadyService<SocketAddr, D::Service, Request>>,
 
     /// Channels used to cancel the request that an unready service is doing.
-    cancel_handles: HashMap<D::Key, oneshot::Sender<CancelClientWork>>,
+    cancel_handles: HashMap<SocketAddr, oneshot::Sender<CancelClientWork>>,
 
     /// A channel that asks the peer crawler task to connect to more peers.
     demand_signal: mpsc::Sender<MorePeers>,
@@ -164,7 +165,7 @@ where
 
 impl<D> Drop for PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
+    D: Discover<Key = PeerMetaData> + Unpin,
     D::Service: Service<Request, Response = Response> + Load,
     D::Error: Into<BoxError>,
     <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
@@ -178,7 +179,7 @@ where
 
 impl<D> PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
+    D: Discover<Key = PeerMetaData> + Unpin,
     D::Service: Service<Request, Response = Response> + Load,
     D::Error: Into<BoxError>,
     <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
@@ -388,19 +389,19 @@ where
             {
                 Change::Remove(key) => {
                     trace!(?key, "got Change::Remove from Discover");
-                    self.remove(&key);
+                    self.remove(&key.address());
                 }
                 Change::Insert(key, svc) => {
                     trace!(?key, "got Change::Insert from Discover");
-                    self.remove(&key);
-                    self.push_unready(key, svc);
+                    self.remove(&key.address());
+                    self.push_unready(key.address(), svc);
                 }
             }
         }
     }
 
     /// Takes a ready service by key, invalidating `preselected_p2c_peer` if needed.
-    fn take_ready_service(&mut self, key: &D::Key) -> Option<D::Service> {
+    fn take_ready_service(&mut self, key: &SocketAddr) -> Option<D::Service> {
         if let Some(svc) = self.ready_services.remove(key) {
             if Some(*key) == self.preselected_p2c_peer {
                 self.preselected_p2c_peer = None;
@@ -421,7 +422,7 @@ where
     ///
     /// Drops the service, cancelling any pending request or response to that peer.
     /// If the peer does not exist, does nothing.
-    fn remove(&mut self, key: &D::Key) {
+    fn remove(&mut self, key: &SocketAddr) {
         if let Some(ready_service) = self.take_ready_service(key) {
             // A ready service has no work to cancel, so just drop it.
             std::mem::drop(ready_service);
@@ -435,7 +436,7 @@ where
 
     /// Adds a busy service to the unready list,
     /// and adds a cancel handle for the service's current request.
-    fn push_unready(&mut self, key: D::Key, svc: D::Service) {
+    fn push_unready(&mut self, key: SocketAddr, svc: D::Service) {
         let (tx, rx) = oneshot::channel();
         self.cancel_handles.insert(key, tx);
         self.unready_services.push(UnreadyService {
@@ -447,12 +448,15 @@ where
     }
 
     /// Performs P2C on `self.ready_services` to randomly select a less-loaded ready service.
-    fn preselect_p2c_peer(&self) -> Option<D::Key> {
+    fn preselect_p2c_peer(&self) -> Option<SocketAddr> {
         self.select_p2c_peer_from_list(self.ready_services.keys().copied().collect())
     }
 
     /// Performs P2C on `ready_service_list` to randomly select a less-loaded ready service.
-    fn select_p2c_peer_from_list(&self, ready_service_list: HashSet<D::Key>) -> Option<D::Key> {
+    fn select_p2c_peer_from_list(
+        &self,
+        ready_service_list: HashSet<SocketAddr>,
+    ) -> Option<SocketAddr> {
         match ready_service_list.len() {
             0 => None,
             1 => Some(
@@ -504,7 +508,7 @@ where
     /// Accesses a ready endpoint by `key` and returns its current load.
     ///
     /// Returns `None` if the service is not in the ready service list.
-    fn query_load(&self, key: &D::Key) -> Option<<D::Service as Load>::Metric> {
+    fn query_load(&self, key: &SocketAddr) -> Option<<D::Service as Load>::Metric> {
         let svc = self.ready_services.get(key);
         svc.map(|svc| svc.load())
     }
@@ -664,7 +668,7 @@ where
 
 impl<D> Service<Request> for PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
+    D: Discover<Key = PeerMetaData> + Unpin,
     D::Service: Service<Request, Response = Response> + Load,
     D::Error: Into<BoxError>,
     <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
