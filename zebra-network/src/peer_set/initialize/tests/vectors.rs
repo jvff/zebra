@@ -41,7 +41,7 @@ use crate::{
             accept_inbound_connections, add_initial_peers, crawl_and_dial, open_listener,
             PeerChange,
         },
-        set::MorePeers,
+        signals::MorePeers,
         ActiveConnectionCounter, CandidateSet,
     },
     protocol::types::PeerServices,

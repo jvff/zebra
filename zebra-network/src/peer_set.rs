@@ -3,6 +3,7 @@ mod initialize;
 mod inventory_registry;
 mod limit;
 mod set;
+mod signals;
 mod unready_service;
 
 pub(crate) use candidate_set::CandidateSet;

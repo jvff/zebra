@@ -10,7 +10,7 @@ use std::{
 use futures::{channel::oneshot, ready};
 use tower::Service;
 
-use crate::peer_set::set::CancelClientWork;
+use crate::peer_set::signals::CancelClientWork;
 
 /// A Future that becomes satisfied when an `S`-typed service is ready.
 ///

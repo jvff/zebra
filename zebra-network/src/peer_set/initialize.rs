@@ -33,7 +33,9 @@ use crate::{
     constants,
     meta_addr::{MetaAddr, MetaAddrChange},
     peer::{self, HandshakeRequest, OutboundConnectorRequest},
-    peer_set::{set::MorePeers, ActiveConnectionCounter, CandidateSet, ConnectionTracker, PeerSet},
+    peer_set::{
+        signals::MorePeers, ActiveConnectionCounter, CandidateSet, ConnectionTracker, PeerSet,
+    },
     AddressBook, BoxError, Config, Request, Response,
 };
 
