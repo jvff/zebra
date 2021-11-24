@@ -2,6 +2,7 @@ pub(crate) mod candidate_set;
 mod initialize;
 mod inventory_registry;
 mod limit;
+mod ready_service;
 mod set;
 mod signals;
 mod unready_service;

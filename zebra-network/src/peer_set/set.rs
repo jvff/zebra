@@ -74,6 +74,7 @@ use tower::{
 use crate::{
     peer::PeerMetaData,
     peer_set::{
+        ready_service::ReadyService,
         signals::{CancelClientWork, MorePeers},
         unready_service::{Error as UnreadyError, UnreadyService},
         InventoryRegistry,
@@ -110,7 +111,7 @@ where
 
     /// Connected peers that are ready to receive requests from Zebra,
     /// or send requests to Zebra.
-    ready_services: HashMap<SocketAddr, D::Service>,
+    ready_services: HashMap<SocketAddr, ReadyService<D::Service>>,
 
     /// A preselected ready service.
     ///
@@ -345,11 +346,15 @@ where
                 Poll::Pending | Poll::Ready(None) => return,
 
                 // Unready -> Ready
-                Poll::Ready(Some(Ok((key, svc)))) => {
+                Poll::Ready(Some(Ok((key, service)))) => {
                     trace!(?key, "service became ready");
+
                     let cancel = self.cancel_handles.remove(&key);
                     assert!(cancel.is_some(), "missing cancel handle");
-                    self.ready_services.insert(key, svc);
+
+                    let ready_service = ReadyService::new(service, version);
+
+                    self.ready_services.insert(key, ready_service);
                 }
 
                 // Unready -> Canceled
