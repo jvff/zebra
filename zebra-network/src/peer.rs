@@ -10,6 +10,8 @@ mod connector;
 mod error;
 /// Performs peer handshakes.
 mod handshake;
+/// Groups some peer meta-data.
+mod meta_data;
 
 use client::{ClientRequest, ClientRequestReceiver, InProgressClientRequest, MustUseOneshotSender};
 
@@ -18,3 +20,4 @@ pub use connection::Connection;
 pub use connector::{Connector, OutboundConnectorRequest};
 pub use error::{ErrorSlot, HandshakeError, PeerError, SharedPeerError};
 pub use handshake::{ConnectedAddr, Handshake, HandshakeRequest};
+pub use meta_data::PeerMetaData;
