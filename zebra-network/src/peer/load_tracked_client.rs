@@ -5,17 +5,25 @@ use tower::{
     Service,
 };
 
-use crate::peer::Client;
+use crate::{peer::Client, protocol::external::types::Version};
 
 /// A client service wrapper that keeps track of its load.
+///
+/// It also keeps track of the peer's reported protocol version.
 pub struct LoadTrackedClient {
     service: PeakEwma<Client>,
+    version: Version,
 }
 
 impl LoadTrackedClient {
     /// Create a new [`LoadTrackedClient`] wrapping the provided `service`.
-    pub fn new(service: PeakEwma<Client>) -> Self {
-        LoadTrackedClient { service }
+    pub fn new(service: PeakEwma<Client>, version: Version) -> Self {
+        LoadTrackedClient { service, version }
+    }
+
+    /// Retrieve the peer's reported protocol version.
+    pub fn version(&self) -> Version {
+        self.version
     }
 }
 

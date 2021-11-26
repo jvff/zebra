@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     net::SocketAddr,
     pin::Pin,
     task::{Context, Poll},
@@ -17,6 +18,7 @@ use tower::{
 use crate::{
     constants,
     peer::{Client, LoadTrackedClient},
+    protocol::external::types::Version,
 };
 
 type LoadTracker = PeakEwmaDiscover<UnboundedReceiverStream<DiscoveryEvent<Client>>>;
@@ -34,6 +36,9 @@ pub struct PeerDiscoverer<D> {
     /// The internal tracker of peer loads.
     #[pin]
     load_tracker: LoadTracker,
+
+    /// A map to keep track of the versions of peers being prepared.
+    peer_versions: HashMap<SocketAddr, Version>,
 
     /// A channel to send received peer services to the load tracker.
     discovery_event_sender: Option<mpsc::UnboundedSender<DiscoveryEvent<Client>>>,
@@ -56,6 +61,7 @@ impl<D> PeerDiscoverer<D> {
             discovered_peers,
             load_tracker,
             discovery_event_sender: Some(discovery_event_sender),
+            peer_versions: HashMap::new(),
         }
     }
 }
@@ -122,23 +128,38 @@ where
     }
 
     /// Forward a newly discovered peer to the load tracker.
+    ///
+    /// Keeps track of the peer's protocol version so that it can be added to the
+    /// [`LoadTrackedClient`] afterwards.
     fn forward_discovered_peer(&mut self, (address, client): (SocketAddr, Client)) {
         if let Some(event_sender) = self.discovery_event_sender.as_mut() {
-            let event = Ok(Change::Insert(address, client));
+            let duplicate_entry = self.peer_versions.insert(address, client.version);
 
-            if event_sender.send(event).is_err() {
-                self.discovery_event_sender.take();
+            if duplicate_entry.is_none() {
+                let event = Ok(Change::Insert(address, client));
+
+                if event_sender.send(event).is_err() {
+                    self.discovery_event_sender.take();
+                }
             }
         }
     }
 
     /// Finish preparing a load tracked service into a discovery event.
+    ///
+    /// Joins the service prepared by the load tracker with the peer's protocol version to create a
+    /// [`LoadTrackedClient`].
     fn finish_preparing_client(
         &mut self,
         address: SocketAddr,
         load_tracked_service: PeakEwma<Client>,
     ) -> DiscoveryEvent<LoadTrackedClient> {
-        let load_tracked_client = LoadTrackedClient::new(load_tracked_service);
+        let peer_version = self
+            .peer_versions
+            .remove(&address)
+            .expect("Peer version was lost by PeerDiscoverer");
+
+        let load_tracked_client = LoadTrackedClient::new(load_tracked_service, peer_version);
 
         Ok(Change::Insert(address, load_tracked_client))
     }
