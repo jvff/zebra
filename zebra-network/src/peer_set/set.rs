@@ -71,8 +71,10 @@ use tower::{
     Service,
 };
 
+use zebra_chain::chain_tip::ChainTip;
+
 use crate::{
-    peer::LoadTrackedClient,
+    peer::{LoadTrackedClient, MinimumPeerVersion},
     peer_set::{
         unready_service::{Error as UnreadyError, UnreadyService},
         InventoryRegistry,
@@ -106,10 +108,11 @@ pub struct CancelClientWork;
 /// connections have an ephemeral local or proxy port.)
 ///
 /// Otherwise, malicious peers could interfere with other peers' `PeerSet` state.
-pub struct PeerSet<D>
+pub struct PeerSet<D, C>
 where
     D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
+    C: ChainTip,
 {
     /// Provides new and deleted peer [`Change`]s to the peer set,
     /// via the [`Discover`] trait implementation.
@@ -168,22 +171,30 @@ where
     /// The peer set panics if this size is exceeded.
     /// If that happens, our connection limit code has a bug.
     peerset_total_connection_limit: usize,
+
+    /// An endpoint to see the minimum peer protocol version in real time.
+    ///
+    /// The minimum version depends on the block height, and [`MinimumPeerVersion`] listens for
+    /// height changes and determines the correct minimum version.
+    minimum_peer_version: MinimumPeerVersion<C>,
 }
 
-impl<D> Drop for PeerSet<D>
+impl<D, C> Drop for PeerSet<D, C>
 where
     D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
+    C: ChainTip,
 {
     fn drop(&mut self) {
         self.shut_down_tasks_and_channels()
     }
 }
 
-impl<D> PeerSet<D>
+impl<D, C> PeerSet<D, C>
 where
     D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
+    C: ChainTip,
 {
     /// Construct a peerset which uses `discover` to manage peer connections.
     ///
@@ -204,6 +215,7 @@ where
         handle_rx: tokio::sync::oneshot::Receiver<Vec<JoinHandle<Result<(), BoxError>>>>,
         inv_stream: broadcast::Receiver<(InventoryHash, SocketAddr)>,
         address_book: Arc<std::sync::Mutex<AddressBook>>,
+        minimum_peer_version: MinimumPeerVersion<C>,
     ) -> Self {
         Self {
             // Ready peers
@@ -225,6 +237,9 @@ where
             last_peer_log: None,
             address_book,
             peerset_total_connection_limit: config.peerset_total_connection_limit(),
+
+            // Real-time parameters
+            minimum_peer_version,
         }
     }
 
@@ -703,10 +718,11 @@ where
     }
 }
 
-impl<D> Service<Request> for PeerSet<D>
+impl<D, C> Service<Request> for PeerSet<D, C>
 where
     D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
+    C: ChainTip,
 {
     type Response = Response;
     type Error = BoxError;
