@@ -61,6 +61,7 @@ mod config;
 pub mod constants;
 mod isolated;
 mod meta_addr;
+mod minimum_peer_version;
 mod peer;
 mod peer_set;
 mod policies;
