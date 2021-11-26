@@ -59,6 +59,7 @@ mod address_book;
 mod address_book_updater;
 mod config;
 pub mod constants;
+mod discoverer;
 mod isolated;
 mod meta_addr;
 mod peer;
