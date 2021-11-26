@@ -72,6 +72,7 @@ use tower::{
 };
 
 use crate::{
+    peer::LoadTrackedClient,
     peer_set::{
         unready_service::{Error as UnreadyError, UnreadyService},
         InventoryRegistry,
@@ -107,12 +108,8 @@ pub struct CancelClientWork;
 /// Otherwise, malicious peers could interfere with other peers' `PeerSet` state.
 pub struct PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
-    D::Service: Service<Request, Response = Response> + Load,
+    D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
-    <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
-    <D::Service as Service<Request>>::Future: Send + 'static,
-    <D::Service as Load>::Metric: Debug,
 {
     /// Provides new and deleted peer [`Change`]s to the peer set,
     /// via the [`Discover`] trait implementation.
@@ -175,12 +172,8 @@ where
 
 impl<D> Drop for PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
-    D::Service: Service<Request, Response = Response> + Load,
+    D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
-    <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
-    <D::Service as Service<Request>>::Future: Send + 'static,
-    <D::Service as Load>::Metric: Debug,
 {
     fn drop(&mut self) {
         self.shut_down_tasks_and_channels()
@@ -189,12 +182,8 @@ where
 
 impl<D> PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
-    D::Service: Service<Request, Response = Response> + Load,
+    D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
-    <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
-    <D::Service as Service<Request>>::Future: Send + 'static,
-    <D::Service as Load>::Metric: Debug,
 {
     /// Construct a peerset which uses `discover` to manage peer connections.
     ///
@@ -375,8 +364,7 @@ where
                 }
 
                 // Unready -> Errored
-                Poll::Ready(Some(Err((key, UnreadyError::Inner(e))))) => {
-                    let error = e.into();
+                Poll::Ready(Some(Err((key, UnreadyError::Inner(error))))) => {
                     debug!(%error, "service failed while unready, dropping service");
 
                     let cancel = self.cancel_handles.remove(&key);
@@ -717,12 +705,8 @@ where
 
 impl<D> Service<Request> for PeerSet<D>
 where
-    D: Discover<Key = SocketAddr> + Unpin,
-    D::Service: Service<Request, Response = Response> + Load,
+    D: Discover<Key = SocketAddr, Service = LoadTrackedClient> + Unpin,
     D::Error: Into<BoxError>,
-    <D::Service as Service<Request>>::Error: Into<BoxError> + 'static,
-    <D::Service as Service<Request>>::Future: Send + 'static,
-    <D::Service as Load>::Metric: Debug,
 {
     type Response = Response;
     type Error = BoxError;
@@ -760,8 +744,7 @@ where
                         trace!("preselected service is no longer ready, moving to unready list");
                         self.push_unready(key, service);
                     }
-                    Poll::Ready(Err(e)) => {
-                        let error = e.into();
+                    Poll::Ready(Err(error)) => {
                         trace!(%error, "preselected service failed, dropping it");
                         std::mem::drop(service);
                     }
