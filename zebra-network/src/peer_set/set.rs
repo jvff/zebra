@@ -414,6 +414,26 @@ where
         }
     }
 
+    /// Checks if the minimum peer version has changed, and disconnects from outdated peers.
+    fn disconnect_from_outdated_peers(&mut self) {
+        if let Some(minimum_version) = self.minimum_peer_version.changed() {
+            // TODO: Remove when the code base migrates to Rust 2021 edition (#2709).
+            let preselected_p2c_peer = &mut self.preselected_p2c_peer;
+
+            self.ready_services.retain(|address, peer| {
+                if peer.version() >= minimum_version {
+                    true
+                } else {
+                    if *preselected_p2c_peer == Some(*address) {
+                        *preselected_p2c_peer = None;
+                    }
+
+                    false
+                }
+            });
+        }
+    }
+
     /// Takes a ready service by key, invalidating `preselected_p2c_peer` if needed.
     fn take_ready_service(&mut self, key: &D::Key) -> Option<D::Service> {
         if let Some(svc) = self.ready_services.remove(key) {
@@ -693,6 +713,7 @@ where
 
         // Update peer statuses
         let _ = self.poll_discover(cx)?;
+        self.disconnect_from_outdated_peers();
         self.inventory_registry.poll_inventory(cx)?;
         self.poll_unready(cx);
 
