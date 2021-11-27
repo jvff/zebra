@@ -471,14 +471,16 @@ where
     /// Adds a busy service to the unready list,
     /// and adds a cancel handle for the service's current request.
     fn push_unready(&mut self, key: D::Key, svc: D::Service) {
-        let (tx, rx) = oneshot::channel();
-        self.cancel_handles.insert(key, tx);
-        self.unready_services.push(UnreadyService {
-            key: Some(key),
-            service: Some(svc),
-            cancel: rx,
-            _req: PhantomData,
-        });
+        if svc.version() >= self.minimum_peer_version.current() {
+            let (tx, rx) = oneshot::channel();
+            self.cancel_handles.insert(key, tx);
+            self.unready_services.push(UnreadyService {
+                key: Some(key),
+                service: Some(svc),
+                cancel: rx,
+                _req: PhantomData,
+            });
+        }
     }
 
     /// Performs P2C on `self.ready_services` to randomly select a less-loaded ready service.
