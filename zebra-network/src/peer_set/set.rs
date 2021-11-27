@@ -364,7 +364,10 @@ where
                     trace!(?key, "service became ready");
                     let cancel = self.cancel_handles.remove(&key);
                     assert!(cancel.is_some(), "missing cancel handle");
-                    self.ready_services.insert(key, svc);
+
+                    if svc.version() >= self.minimum_peer_version.current() {
+                        self.ready_services.insert(key, svc);
+                    }
                 }
 
                 // Unready -> Canceled
