@@ -9,7 +9,7 @@ use futures::{
     channel::mpsc,
     future::{self, FutureExt},
     sink::SinkExt,
-    stream::{FuturesUnordered, StreamExt},
+    stream::{FuturesUnordered, StreamExt, TryStreamExt},
     TryFutureExt,
 };
 use rand::seq::SliceRandom;
@@ -19,7 +19,10 @@ use tokio::{
     time::{sleep, Instant},
 };
 use tokio_stream::wrappers::IntervalStream;
-use tower::{buffer::Buffer, layer::Layer, util::BoxService, Service, ServiceExt};
+use tower::{
+    buffer::Buffer, discover::Change, layer::Layer, load::peak_ewma::PeakEwmaDiscover,
+    util::BoxService, Service, ServiceExt,
+};
 use tracing::Span;
 use tracing_futures::Instrument;
 
@@ -28,7 +31,6 @@ use zebra_chain::{chain_tip::ChainTip, parameters::Network};
 use crate::{
     address_book_updater::AddressBookUpdater,
     constants,
-    discoverer::PeerDiscoverer,
     meta_addr::{MetaAddr, MetaAddrChange},
     minimum_peer_version::MinimumPeerVersion,
     peer::{self, HandshakeRequest, OutboundConnectorRequest},
@@ -136,12 +138,11 @@ where
     let (peerset_tx, peerset_rx) =
         mpsc::channel::<DiscoveredPeer>(config.peerset_total_connection_limit());
 
-    let discovered_peers = PeerDiscoverer::new(
-        peerset_rx
-            // Discover interprets an error as stream termination,
-            // so discard any errored connections...
-            .filter_map(|result| future::ready(result.ok())),
-    );
+    let discovered_peers = peerset_rx
+        // Discover interprets an error as stream termination,
+        // so discard any errored connections...
+        .filter(|result| future::ready(result.is_ok()))
+        .map_ok(|(address, client)| Change::Insert(address, client));
 
     // Create an mpsc channel for peerset demand signaling,
     // based on the maximum number of outbound peers.
@@ -154,7 +155,12 @@ where
     // Connect the rx end to a PeerSet, wrapping new peers in load instruments.
     let peer_set = PeerSet::new(
         &config,
-        discovered_peers,
+        PeakEwmaDiscover::new(
+            discovered_peers,
+            constants::EWMA_DEFAULT_RTT,
+            constants::EWMA_DECAY_TIME,
+            tower::load::CompleteOnResponse::default(),
+        ),
         demand_tx.clone(),
         handle_rx,
         inv_receiver,
