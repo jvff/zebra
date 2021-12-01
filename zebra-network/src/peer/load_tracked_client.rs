@@ -1,3 +1,6 @@
+//! A peer connection service wrapper type to handle load tracking and provide access to the
+//! reported protocol version.
+
 use std::task::{Context, Poll};
 
 use tower::{
