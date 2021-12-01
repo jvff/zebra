@@ -32,7 +32,7 @@ pub struct Client {
     /// `None` unless the connection or client have errored.
     pub(crate) error_slot: ErrorSlot,
 
-    /// The peer's protocol version.
+    /// The peer connection's protocol version.
     pub(crate) version: Version,
 }
 
