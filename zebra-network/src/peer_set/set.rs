@@ -475,15 +475,22 @@ where
     /// Adds a busy service to the unready list,
     /// and adds a cancel handle for the service's current request.
     fn push_unready(&mut self, key: D::Key, svc: D::Service) {
-        if svc.version() >= self.minimum_peer_version.current() {
-            let (tx, rx) = oneshot::channel();
+        let peer_version = svc.version();
+        let (tx, rx) = oneshot::channel();
+
+        self.unready_services.push(UnreadyService {
+            key: Some(key),
+            service: Some(svc),
+            cancel: rx,
+            _req: PhantomData,
+        });
+
+        if peer_version >= self.minimum_peer_version.current() {
             self.cancel_handles.insert(key, tx);
-            self.unready_services.push(UnreadyService {
-                key: Some(key),
-                service: Some(svc),
-                cancel: rx,
-                _req: PhantomData,
-            });
+        } else {
+            // Cancel any request made to the service because it is using an outdated protocol
+            // version.
+            std::mem::drop(tx);
         }
     }
 
