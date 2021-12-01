@@ -22,9 +22,9 @@ pub struct LoadTrackedClient {
     version: Version,
 }
 
-impl LoadTrackedClient {
-    /// Create a new [`LoadTrackedClient`] wrapping the provided `client` service.
-    pub fn new(client: Client) -> Self {
+/// Create a new [`LoadTrackedClient`] wrapping the provided `client` service.
+impl From<Client> for LoadTrackedClient {
+    fn from(client: Client) -> Self {
         let version = client.version;
 
         let service = PeakEwma::new(
@@ -36,7 +36,9 @@ impl LoadTrackedClient {
 
         LoadTrackedClient { service, version }
     }
+}
 
+impl LoadTrackedClient {
     /// Retrieve the peer's reported protocol version.
     pub fn version(&self) -> Version {
         self.version

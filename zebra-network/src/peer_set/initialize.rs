@@ -32,7 +32,7 @@ use crate::{
     constants,
     meta_addr::{MetaAddr, MetaAddrChange},
     minimum_peer_version::MinimumPeerVersion,
-    peer::{self, HandshakeRequest, LoadTrackedClient, OutboundConnectorRequest},
+    peer::{self, HandshakeRequest, OutboundConnectorRequest},
     peer_set::{set::MorePeers, ActiveConnectionCounter, CandidateSet, ConnectionTracker, PeerSet},
     AddressBook, BoxError, Config, Request, Response,
 };
@@ -141,7 +141,7 @@ where
         // Discover interprets an error as stream termination,
         // so discard any errored connections...
         .filter(|result| future::ready(result.is_ok()))
-        .map_ok(|(address, client)| Change::Insert(address, LoadTrackedClient::new(client)));
+        .map_ok(|(address, client)| Change::Insert(address, client.into()));
 
     // Create an mpsc channel for peerset demand signaling,
     // based on the maximum number of outbound peers.
