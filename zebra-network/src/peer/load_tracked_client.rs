@@ -5,7 +5,11 @@ use tower::{
     Service,
 };
 
-use crate::{peer::Client, protocol::external::types::Version};
+use crate::{
+    constants::{EWMA_DECAY_TIME_NANOS, EWMA_DEFAULT_RTT},
+    peer::Client,
+    protocol::external::types::Version,
+};
 
 /// A client service wrapper that keeps track of its load.
 ///
@@ -16,8 +20,17 @@ pub struct LoadTrackedClient {
 }
 
 impl LoadTrackedClient {
-    /// Create a new [`LoadTrackedClient`] wrapping the provided `service`.
-    pub fn new(service: PeakEwma<Client>, version: Version) -> Self {
+    /// Create a new [`LoadTrackedClient`] wrapping the provided `client` service.
+    pub fn new(client: Client) -> Self {
+        let version = client.version;
+
+        let service = PeakEwma::new(
+            client,
+            EWMA_DEFAULT_RTT,
+            EWMA_DECAY_TIME_NANOS,
+            tower::load::CompleteOnResponse::default(),
+        );
+
         LoadTrackedClient { service, version }
     }
 
