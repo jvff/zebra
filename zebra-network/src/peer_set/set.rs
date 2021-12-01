@@ -130,7 +130,8 @@ where
     /// If this is `Some(addr)`, `addr` must be a key for a peer in `ready_services`.
     /// If that peer is removed from `ready_services`, we must set the preselected peer to `None`.
     ///
-    /// This is handled by [`PeerSet::take_ready_service`] and [`PeerSet::route_all`].
+    /// This is handled by [`PeerSet::take_ready_service`], [`PeerSet::route_all`] and
+    /// [`PeerSet::disconnect_from_outdated_peers`].
     preselected_p2c_peer: Option<D::Key>,
 
     /// Stores gossiped inventory hashes from connected peers.
