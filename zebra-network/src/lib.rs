@@ -61,6 +61,7 @@ mod config;
 pub mod constants;
 mod isolated;
 mod meta_addr;
+/// Watches for chain tip height updates to determine the minimum support peer protocol version.
 mod minimum_peer_version;
 mod peer;
 mod peer_set;
