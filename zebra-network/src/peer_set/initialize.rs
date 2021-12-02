@@ -31,8 +31,7 @@ use crate::{
     address_book_updater::AddressBookUpdater,
     constants,
     meta_addr::{MetaAddr, MetaAddrChange},
-    minimum_peer_version::MinimumPeerVersion,
-    peer::{self, HandshakeRequest, OutboundConnectorRequest},
+    peer::{self, HandshakeRequest, MinimumPeerVersion, OutboundConnectorRequest},
     peer_set::{set::MorePeers, ActiveConnectionCounter, CandidateSet, ConnectionTracker, PeerSet},
     AddressBook, BoxError, Config, Request, Response,
 };

@@ -74,8 +74,7 @@ use tower::{
 use zebra_chain::chain_tip::ChainTip;
 
 use crate::{
-    minimum_peer_version::MinimumPeerVersion,
-    peer::LoadTrackedClient,
+    peer::{LoadTrackedClient, MinimumPeerVersion},
     peer_set::{
         unready_service::{Error as UnreadyError, UnreadyService},
         InventoryRegistry,
