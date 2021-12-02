@@ -472,8 +472,10 @@ where
         }
     }
 
-    /// Adds a busy service to the unready list,
+    /// Adds a busy service to the unready list if it's for a peer with a supported version,
     /// and adds a cancel handle for the service's current request.
+    ///
+    /// If the busy service is for an outdated peer, the service is cancelled and dropped.
     fn push_unready(&mut self, key: D::Key, svc: D::Service) {
         let peer_version = svc.version();
         let (tx, rx) = oneshot::channel();
