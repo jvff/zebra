@@ -352,7 +352,8 @@ where
 
     /// Check busy peer services for request completion or errors.
     ///
-    /// Move newly ready services to the ready list, and drop failed services.
+    /// Move newly ready services to the ready list if they are for peers with supported protocol
+    /// versions, otherwise they are dropped. Also drop failed services.
     fn poll_unready(&mut self, cx: &mut Context<'_>) {
         loop {
             match Pin::new(&mut self.unready_services).poll_next(cx) {
