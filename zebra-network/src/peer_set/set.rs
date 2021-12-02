@@ -492,7 +492,7 @@ where
         } else {
             // Cancel any request made to the service because it is using an outdated protocol
             // version.
-            std::mem::drop(tx);
+            let _ = tx.send(CancelClientWork);
         }
     }
 
