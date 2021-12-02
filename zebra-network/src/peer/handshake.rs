@@ -30,8 +30,9 @@ use zebra_chain::{
 use crate::{
     constants,
     meta_addr::MetaAddrChange,
-    minimum_peer_version::MinimumPeerVersion,
-    peer::{Client, ClientRequest, Connection, ErrorSlot, HandshakeError, PeerError},
+    peer::{
+        Client, ClientRequest, Connection, ErrorSlot, HandshakeError, MinimumPeerVersion, PeerError,
+    },
     peer_set::ConnectionTracker,
     protocol::{
         external::{types::*, AddrInVersion, Codec, InventoryHash, Message},
