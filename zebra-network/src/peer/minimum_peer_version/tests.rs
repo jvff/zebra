@@ -25,6 +25,26 @@ proptest! {
 
         prop_assert_eq!(minimum_peer_version.current(), expected_minimum_version);
     }
+
+    /// Test if the calculated minimum peer version changes with the tip height.
+    #[test]
+    fn minimum_peer_version_is_updated_with_chain_tip(
+        network in any::<Network>(),
+        block_heights in any::<Vec<Option<block::Height>>>(),
+    ) {
+        let (chain_tip, best_tip_height) = MockChainTip::new();
+        let mut minimum_peer_version = MinimumPeerVersion::new(chain_tip, network);
+
+        for block_height in block_heights {
+            best_tip_height
+                .send(block_height)
+                .expect("receiving endpoint lives as long as `minimum_peer_version`");
+
+            let expected_minimum_version = Version::min_remote_for_height(network, block_height);
+
+            prop_assert_eq!(minimum_peer_version.current(), expected_minimum_version);
+        }
+    }
 }
 
 /// A mock [`ChainTip`] implementation that allows setting the `best_tip_height` externally.
