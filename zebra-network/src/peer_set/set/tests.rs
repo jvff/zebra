@@ -1,5 +1,4 @@
 use futures::channel::{mpsc, oneshot};
-use proptest::prelude::*;
 
 use crate::{
     peer::{Client, ClientRequest, ErrorSlot, LoadTrackedClient},
