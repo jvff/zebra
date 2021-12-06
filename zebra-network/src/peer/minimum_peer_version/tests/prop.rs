@@ -29,8 +29,8 @@ proptest! {
         network in any::<Network>(),
         block_heights in any::<Vec<Option<block::Height>>>(),
     ) {
-        let (chain_tip, best_tip_height) = MockChainTip::new();
-        let mut minimum_peer_version = MinimumPeerVersion::new(chain_tip, network);
+        let (mut minimum_peer_version, best_tip_height) =
+            MinimumPeerVersion::with_mock_chain_tip(network);
 
         for block_height in block_heights {
             best_tip_height
