@@ -2,7 +2,6 @@ use proptest::prelude::*;
 
 use zebra_chain::{block, parameters::Network};
 
-use super::MockChainTip;
 use crate::{peer::MinimumPeerVersion, protocol::external::types::Version};
 
 proptest! {
@@ -12,8 +11,8 @@ proptest! {
         network in any::<Network>(),
         block_height in any::<Option<block::Height>>(),
     ) {
-        let (chain_tip, best_tip_height) = MockChainTip::new();
-        let mut minimum_peer_version = MinimumPeerVersion::new(chain_tip, network);
+        let (mut minimum_peer_version, best_tip_height) =
+            MinimumPeerVersion::with_mock_chain_tip(network);
 
         best_tip_height
             .send(block_height)
