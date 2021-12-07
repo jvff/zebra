@@ -10,6 +10,7 @@ use super::MinimumPeerVersion;
 mod prop;
 
 /// A mock [`ChainTip`] implementation that allows setting the `best_tip_height` externally.
+#[derive(Clone)]
 pub struct MockChainTip {
     best_tip_height: watch::Receiver<Option<block::Height>>,
 }
