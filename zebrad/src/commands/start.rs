@@ -113,8 +113,9 @@ impl StartCmd {
         let (syncer, sync_status) = ChainSync::new(
             &config,
             peer_set.clone(),
-            state.clone(),
             chain_verifier.clone(),
+            state.clone(),
+            latest_chain_tip.clone(),
         );
 
         info!("initializing mempool");
