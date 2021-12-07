@@ -65,7 +65,7 @@ proptest! {
 
                 let new_minimum_version = Version::min_remote_for_height(network, new_block_height);
 
-                expected_minimum_version =  if new_minimum_version != current_minimum_version {
+                expected_minimum_version = if new_minimum_version != current_minimum_version {
                     Some(new_minimum_version)
                 } else {
                     None
