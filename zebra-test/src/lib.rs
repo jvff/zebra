@@ -46,7 +46,7 @@ pub mod zip0244;
 /// for example) and that means that the next test will already start with an incorrect timer
 /// state.
 pub static RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-    tokio::runtime::Builder::new_multi_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("Failed to create Tokio runtime")
@@ -119,6 +119,20 @@ pub fn init() {
             .install()
             .unwrap();
     })
+}
+
+/// Initialize globals for tests that need a separate Tokio runtime instance.
+///
+/// This is generally used in proptests, which don't support the `#[tokio::test]` attribute.
+///
+/// See also the [`init`] function, which is called by this function.
+pub fn init_async() -> tokio::runtime::Runtime {
+    init();
+
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio runtime")
 }
 
 struct SkipTestReturnedErrPanicMessages;
