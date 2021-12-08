@@ -2,9 +2,6 @@ use zebra_chain::{chain_tip::ChainTip, parameters::Network};
 
 use crate::protocol::external::types::Version;
 
-#[cfg(test)]
-mod tests;
-
 /// A helper type to monitor the chain tip in order to determine the minimum peer protocol version
 /// that is currently supported.
 pub struct MinimumPeerVersion<C> {
