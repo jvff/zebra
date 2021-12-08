@@ -86,9 +86,6 @@ use crate::{
     AddressBook, BoxError, Config,
 };
 
-#[cfg(test)]
-mod tests;
-
 /// A signal sent by the [`PeerSet`] when it has no ready peers, and gets a request from Zebra.
 ///
 /// In response to this signal, the crawler tries to open more peer connections.
