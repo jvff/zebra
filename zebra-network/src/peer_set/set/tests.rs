@@ -1,10 +1,16 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use futures::channel::{mpsc, oneshot};
+use futures::{
+    channel::{mpsc, oneshot},
+    stream, Stream, StreamExt,
+};
 use proptest::{collection::vec, prelude::*};
 use proptest_derive::Arbitrary;
 use tokio::{sync::broadcast, task::JoinHandle};
-use tower::{discover::Discover, BoxError};
+use tower::{
+    discover::{Change, Discover},
+    BoxError,
+};
 use tracing::Span;
 
 use zebra_chain::{
@@ -99,6 +105,37 @@ impl PeerVersions {
         }
 
         (clients, handles)
+    }
+
+    /// Convert the arbitrary peer versions into mock peer services available through a
+    /// [`Discover`] compatible stream.
+    ///
+    /// A tuple is returned, where the first item is a stream with the mock peers available through
+    /// a [`Discover`] interface, and the second is a list of handles to the mocked services.
+    ///
+    /// The returned stream never finishes, so it is ready to be passed to the [`PeerSet`]
+    /// constructor.
+    ///
+    /// See [`Self::mock_peers`] for details on how the peers are mocked and on what the handles
+    /// contain.
+    pub fn mock_peer_discovery(
+        &self,
+    ) -> (
+        impl Stream<Item = Result<Change<SocketAddr, LoadTrackedClient>, BoxError>>,
+        Vec<MockedClientHandle>,
+    ) {
+        let (clients, handles) = self.mock_peers();
+        let fake_ports = 1_u16..;
+
+        let discovered_peers_iterator = fake_ports.zip(clients).map(|(port, client)| {
+            let peer_address = SocketAddr::new([127, 0, 0, 1].into(), port);
+
+            Ok(Change::Insert(peer_address, client))
+        });
+
+        let discovered_peers = stream::iter(discovered_peers_iterator).chain(stream::pending());
+
+        (discovered_peers, handles)
     }
 }
 
