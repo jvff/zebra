@@ -9,7 +9,9 @@ use tower::{
 
 use zebra_chain::{block, chain_tip::ChainTip, parameters::Network};
 
-use super::{MockedClientHandle, PeerSetBuilder, PeerVersions};
+use super::{
+    BlockHeightPairAcrossNetworkUpgrades, MockedClientHandle, PeerSetBuilder, PeerVersions,
+};
 use crate::{
     peer::{LoadTrackedClient, MinimumPeerVersion},
     peer_set::PeerSet,
@@ -52,6 +54,53 @@ proptest! {
                 &mut peer_set,
                 &mut handles,
                 current_minimum_version,
+            )?;
+
+            Ok::<_, TestCaseError>(())
+        })?;
+    }
+
+    /// Check if peers that become outdated after a network upgrade are dropped by the [`PeerSet`].
+    #[test]
+    fn outdated_peers_are_dropped_on_network_upgrade(
+        block_heights in any::<BlockHeightPairAcrossNetworkUpgrades>(),
+        peer_versions in any::<PeerVersions>(),
+    ) {
+        let runtime = zebra_test::init_async();
+
+        let (clients, mut handles) = peer_versions.mock_peers();
+        let (mut minimum_peer_version, best_tip_height) =
+            MinimumPeerVersion::with_mock_chain_tip(block_heights.network);
+
+        best_tip_height
+            .send(Some(dbg!(block_heights.before_upgrade)))
+            .expect("receiving endpoint lives as long as `minimum_peer_version`");
+
+        let discovered_peers = (1_u16..).zip(clients).map(|(port, client)| {
+            let peer_address = SocketAddr::new([127, 0, 0, 1].into(), port);
+
+            Ok::<_, BoxError>(Change::Insert(peer_address, client))
+        });
+
+        runtime.block_on(async move {
+            let (mut peer_set, _peer_set_guard) = PeerSetBuilder::new()
+                .with_discover(stream::iter(discovered_peers).chain(stream::pending()))
+                .with_minimum_peer_version(minimum_peer_version.clone())
+                .build();
+
+            check_if_only_up_to_date_peers_are_live(
+                &mut peer_set,
+                &mut handles,
+                dbg!(minimum_peer_version.current()),
+            )?;
+
+            best_tip_height.send(Some(dbg!(block_heights.after_upgrade)))
+            .expect("receiving endpoint lives as long as `minimum_peer_version`");
+
+            check_if_only_up_to_date_peers_are_live(
+                &mut peer_set,
+                &mut handles,
+                dbg!(minimum_peer_version.current()),
             )?;
 
             Ok::<_, TestCaseError>(())
