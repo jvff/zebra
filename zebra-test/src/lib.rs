@@ -30,7 +30,7 @@ pub mod zip0143;
 pub mod zip0243;
 pub mod zip0244;
 
-/// A multi-threaded Tokio runtime that can be shared between tests.
+/// A single-threaded Tokio runtime that can be shared between tests.
 ///
 /// This shared runtime should be used in tests that use shared background tasks. An example is
 /// with shared global `Lazy<BatchVerifier>` types, because they spawn a background task when they
