@@ -125,6 +125,8 @@ pub fn init() {
 ///
 /// This is generally used in proptests, which don't support the `#[tokio::test]` attribute.
 ///
+/// If a runtime needs to be shared between tests, use the [`RUNTIME`] instance instead.
+///
 /// See also the [`init`] function, which is called by this function.
 pub fn init_async() -> tokio::runtime::Runtime {
     init();
