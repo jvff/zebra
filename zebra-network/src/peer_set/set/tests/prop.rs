@@ -1,11 +1,8 @@
 use std::net::SocketAddr;
 
-use futures::{stream, FutureExt, StreamExt};
+use futures::FutureExt;
 use proptest::prelude::*;
-use tower::{
-    discover::{Change, Discover},
-    BoxError, ServiceExt,
-};
+use tower::{discover::Discover, BoxError, ServiceExt};
 
 use zebra_chain::{block, chain_tip::ChainTip, parameters::Network};
 
@@ -28,7 +25,7 @@ proptest! {
     ) {
         let runtime = zebra_test::init_async();
 
-        let (clients, mut handles) = peer_versions.mock_peers();
+        let (discovered_peers, mut handles) = peer_versions.mock_peer_discovery();
         let (mut minimum_peer_version, best_tip_height) =
             MinimumPeerVersion::with_mock_chain_tip(network);
 
@@ -38,15 +35,9 @@ proptest! {
 
         let current_minimum_version = minimum_peer_version.current();
 
-        let discovered_peers = (1_u16..).zip(clients).map(|(port, client)| {
-            let peer_address = SocketAddr::new([127, 0, 0, 1].into(), port);
-
-            Ok::<_, BoxError>(Change::Insert(peer_address, client))
-        });
-
         runtime.block_on(async move {
             let (mut peer_set, _peer_set_guard) = PeerSetBuilder::new()
-                .with_discover(stream::iter(discovered_peers).chain(stream::pending()))
+                .with_discover(discovered_peers)
                 .with_minimum_peer_version(minimum_peer_version)
                 .build();
 
