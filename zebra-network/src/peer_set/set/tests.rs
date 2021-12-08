@@ -24,7 +24,7 @@ const MAX_PEERS: usize = 20;
 
 /// A handle to a mocked [`Client`] instance.
 struct MockedClientHandle {
-    request_receiver: mpsc::Receiver<ClientRequest>,
+    _request_receiver: mpsc::Receiver<ClientRequest>,
     shutdown_receiver: oneshot::Receiver<()>,
     version: Version,
 }
@@ -33,7 +33,7 @@ impl MockedClientHandle {
     /// Create a new mocked [`Client`] instance, returning it together with a handle to track it.
     pub fn new(version: Version) -> (Self, LoadTrackedClient) {
         let (shutdown_sender, shutdown_receiver) = oneshot::channel();
-        let (request_sender, request_receiver) = mpsc::channel(1);
+        let (request_sender, _request_receiver) = mpsc::channel(1);
 
         let client = Client {
             shutdown_tx: Some(shutdown_sender),
@@ -43,7 +43,7 @@ impl MockedClientHandle {
         };
 
         let handle = MockedClientHandle {
-            request_receiver,
+            _request_receiver,
             shutdown_receiver,
             version,
         };
