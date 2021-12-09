@@ -188,7 +188,7 @@ where
         }
 
         if self.pending.len() >= MAX_INBOUND_CONCURRENCY {
-            tracing::info!(
+            tracing::debug!(
                 ?hash,
                 queue_len = self.pending.len(),
                 ?MAX_INBOUND_CONCURRENCY,
