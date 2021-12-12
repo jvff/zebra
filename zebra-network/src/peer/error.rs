@@ -29,6 +29,10 @@ pub enum PeerError {
     #[error("Peer closed connection")]
     ConnectionClosed,
 
+    /// Zebra's internal heartbeat task exited.
+    #[error("Internal heartbeat task exited")]
+    HeartbeatTaskExited,
+
     /// The remote peer did not respond to a [`peer::Client`] request in time.
     #[error("Client request timed out")]
     ClientRequestTimeout,
@@ -101,8 +105,8 @@ impl ErrorSlot {
         let mut guard = self.0.lock().expect("error mutex should be unpoisoned");
 
         if let Some(original_error) = guard.clone() {
-            error!(?original_error, new_error = ?e, "peer connection already errored");
-            Err(AlreadyErrored)
+            info!(?original_error, new_error = ?e, "peer connection already errored");
+            Err(AlreadyErrored { original_error })
         } else {
             *guard = Some(e);
             Ok(())
@@ -111,7 +115,12 @@ impl ErrorSlot {
 }
 
 /// The `ErrorSlot` already contains an error.
-pub struct AlreadyErrored;
+#[derive(Clone, Debug)]
+pub struct AlreadyErrored {
+    /// The original error in the error slot.
+    #[allow(dead_code)]
+    original_error: SharedPeerError,
+}
 
 /// An error during a handshake with a remote peer.
 #[derive(Error, Debug)]
