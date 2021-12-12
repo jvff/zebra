@@ -246,7 +246,9 @@ async fn add_initial_peers<S>(
 ) -> Result<ActiveConnectionCounter, BoxError>
 where
     S: Service<OutboundConnectorRequest, Response = (SocketAddr, peer::Client), Error = BoxError>
-        + Clone,
+        + Clone
+        + Send
+        + 'static,
     S::Future: Send + 'static,
 {
     let initial_peers = limit_initial_peers(&config, address_book_updater).await;
@@ -285,20 +287,26 @@ where
                 connection_tracker,
             };
 
-            let outbound_connector = outbound_connector.clone();
-            async move {
-                // Rate-limit the connection, sleeping for an interval according
-                // to its index in the list.
+            // Construct a connector future but do not drive it yet ...
+            let outbound_connector_future = outbound_connector
+                .clone()
+                .oneshot(req)
+                .map_err(move |e| (addr, e));
+
+            // ... instead, spawn a new task to handle this connector
+            tokio::spawn(async move {
+                let task = outbound_connector_future.await;
+                // Only spawn one outbound connector per `MIN_PEER_CONNECTION_INTERVAL`,
+                // sleeping for an interval according to its index in the list.
                 sleep(constants::MIN_PEER_CONNECTION_INTERVAL.saturating_mul(i as u32)).await;
-                outbound_connector
-                    .oneshot(req)
-                    .map_err(move |e| (addr, e))
-                    .await
-            }
+                task
+            })
         })
         .collect();
 
     while let Some(handshake_result) = handshakes.next().await {
+        let handshake_result =
+            handshake_result.expect("unexpected panic in initial peer handshake");
         match handshake_result {
             Ok(ref change) => {
                 handshake_success_total += 1;
@@ -475,8 +483,24 @@ where
 {
     let mut active_inbound_connections = ActiveConnectionCounter::new_counter();
 
+    let mut handshakes = FuturesUnordered::new();
+    // Keeping an unresolved future in the pool means the stream never terminates.
+    handshakes.push(future::pending().boxed());
+
     loop {
-        let inbound_result = listener.accept().await;
+        // Check for panics in finished tasks, before accepting new connections
+        let inbound_result = tokio::select! {
+            biased;
+            next_handshake_res = handshakes.next() => match next_handshake_res {
+                // The task has already sent the peer change to the peer set.
+                Some(Ok(_)) => continue,
+                Some(Err(task_panic)) => panic!("panic in inbound handshake task: {:?}", task_panic),
+                None => unreachable!("handshakes never terminates, because it contains a future that never resolves"),
+            },
+
+            inbound_result = listener.accept() => inbound_result,
+        };
+
         if let Ok((tcp_stream, addr)) = inbound_result {
             if active_inbound_connections.update_count()
                 >= config.peerset_inbound_connection_limit()
@@ -513,14 +537,21 @@ where
             // ... instead, spawn a new task to handle this connection
             {
                 let mut peerset_tx = peerset_tx.clone();
-                tokio::spawn(
+
+                let handshake_task = tokio::spawn(
                     async move {
-                        if let Ok(client) = handshake.await {
+                        let handshake_result = handshake.await;
+
+                        if let Ok(client) = handshake_result {
                             let _ = peerset_tx.send(Ok((addr, client))).await;
+                        } else {
+                            debug!(?handshake_result, "error handshaking with inbound peer");
                         }
                     }
                     .instrument(handshaker_span),
                 );
+
+                handshakes.push(Box::pin(handshake_task));
             }
 
             // Only spawn one inbound connection handshake per `MIN_PEER_CONNECTION_INTERVAL`.
