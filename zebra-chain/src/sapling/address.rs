@@ -82,14 +82,18 @@ impl From<Address> for [u8; 43] {
     ///
     /// <https://zips.z.cash/protocol/protocol.pdf#saplingpaymentaddrencoding>
     fn from(addr: Address) -> [u8; 43] {
-        use std::convert::TryInto;
+        let mut bytes = [0u8; 43];
+        let mut writer = &mut bytes[..];
 
-        let mut bytes = io::Cursor::new(Vec::new());
+        writer
+            .write_all(&<[u8; 11]>::from(addr.diversifier))
+            .expect("diversifier should fit in address buffer");
 
-        let _ = bytes.write_all(&<[u8; 11]>::from(addr.diversifier));
-        let _ = bytes.write_all(&<[u8; 32]>::from(addr.transmission_key));
+        writer
+            .write_all(&<[u8; 32]>::from(addr.transmission_key))
+            .expect("transmission should fit in address buffer");
 
-        bytes.into_inner().try_into().expect("43 bytes")
+        bytes
     }
 }
 
