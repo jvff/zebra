@@ -83,15 +83,12 @@ impl From<Address> for [u8; 43] {
     /// <https://zips.z.cash/protocol/protocol.pdf#saplingpaymentaddrencoding>
     fn from(addr: Address) -> [u8; 43] {
         let mut bytes = [0u8; 43];
-        let mut writer = &mut bytes[..];
 
-        writer
-            .write_all(&<[u8; 11]>::from(addr.diversifier))
-            .expect("diversifier should fit in address buffer");
+        let address_bytes: [u8; 11] = addr.diversifier.into();
+        let address_end = address_bytes.len();
 
-        writer
-            .write_all(&<[u8; 32]>::from(addr.transmission_key))
-            .expect("transmission should fit in address buffer");
+        bytes[..address_end].copy_from_slice(&address_bytes);
+        bytes[address_end..].copy_from_slice(&<[u8; 32]>::from(addr.transmission_key));
 
         bytes
     }
