@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 /// ZebraCli Configuration
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-pub struct ZebraCliConfig {
-    /// An example configuration section
-    pub hello: ExampleSection,
-}
+pub struct ZebraCliConfig {}
 
 /// Default configuration settings.
 ///
@@ -20,26 +17,6 @@ pub struct ZebraCliConfig {
 /// use `#[derive(Default)]` on ZebraCliConfig instead.
 impl Default for ZebraCliConfig {
     fn default() -> Self {
-        Self {
-            hello: ExampleSection::default(),
-        }
-    }
-}
-
-/// Example configuration section.
-///
-/// Delete this and replace it with your actual configuration structs.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-pub struct ExampleSection {
-    /// Example configuration value
-    pub recipient: String,
-}
-
-impl Default for ExampleSection {
-    fn default() -> Self {
-        Self {
-            recipient: "world".to_owned(),
-        }
+        Self {}
     }
 }
