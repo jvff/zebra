@@ -1,12 +1,12 @@
 //! `getnewaddress` subcommand
 
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt::Debug};
 
 use abscissa_core::{config, Command, FrameworkError, Options, Runnable};
 use qrcode::{render::unicode, QrCode};
 use zcash_address::{self, unified, ToAddress};
 
-use zebra_chain::{orchard, sapling};
+use zebra_chain::{orchard, parameters::Network, sapling};
 
 use crate::config::ZebraCliConfig;
 
@@ -46,8 +46,22 @@ impl Runnable for GetNewAddressCmd {
     fn run(&self) {
         let network = zebra_chain::parameters::Network::Mainnet;
 
-        // Sapling
+        let sapling_address = self.new_sapling_address(network);
+        let orchard_address = self.new_orchard_address(network);
 
+        let zcash_address =
+            self.new_unified_address(network, vec![sapling_address, orchard_address]);
+
+        let qr_code = self.create_qr_code_image(&zcash_address);
+
+        println!("\nNew Unified Zcash Address:");
+        println!("\n{}\n", zcash_address);
+        println!("\n{}\n", qr_code);
+    }
+}
+
+impl GetNewAddressCmd {
+    fn new_sapling_address(&self, network: Network) -> unified::Receiver {
         let spending_key = sapling::keys::SpendingKey::new(&mut rand::rngs::OsRng);
 
         let spend_authorizing_key = sapling::keys::SpendAuthorizingKey::from(spending_key);
@@ -66,8 +80,10 @@ impl Runnable for GetNewAddressCmd {
 
         let sapling_address = sapling::Address::new(network, diversifier, transmission_key);
 
-        // Orchard
+        unified::Receiver::Sapling(sapling_address.into())
+    }
 
+    fn new_orchard_address(&self, network: Network) -> unified::Receiver {
         let spending_key = orchard::keys::SpendingKey::new(&mut rand::rngs::OsRng, network);
 
         let spend_authorizing_key = orchard::keys::SpendAuthorizingKey::from(spending_key);
@@ -86,29 +102,31 @@ impl Runnable for GetNewAddressCmd {
 
         let orchard_address = orchard::Address::new(diversifier, transmission_key);
 
-        // Encode as a unified address
-        let receivers = vec![
-            unified::Receiver::Sapling(sapling_address.into()),
-            unified::Receiver::Orchard(orchard_address.into()),
-        ];
+        unified::Receiver::Orchard(orchard_address.into())
+    }
 
-        let zcash_addr = zcash_address::ZcashAddress::from_unified(
-            zcash_address::Network::Main,
-            receivers.try_into().expect("a valid unified::Address"),
-        );
+    fn new_unified_address<A>(&self, network: Network, address: A) -> zcash_address::ZcashAddress
+    where
+        A: TryInto<unified::Address>,
+        A::Error: Debug,
+    {
+        let zcash_network = match network {
+            Network::Mainnet => zcash_address::Network::Main,
+            Network::Testnet => zcash_address::Network::Test,
+        };
 
-        // Print to stdout as a QR code
+        zcash_address::ZcashAddress::from_unified(
+            zcash_network,
+            address.try_into().expect("a valid unified::Address"),
+        )
+    }
 
-        let code = QrCode::new(zcash_addr.to_string()).unwrap();
+    fn create_qr_code_image(&self, data: impl ToString) -> String {
+        let code = QrCode::new(data.to_string()).unwrap();
 
-        let image = code
-            .render::<unicode::Dense1x2>()
+        code.render::<unicode::Dense1x2>()
             .dark_color(unicode::Dense1x2::Light)
             .light_color(unicode::Dense1x2::Dark)
-            .build();
-
-        println!("\nNew Unified Zcash Address:");
-        println!("\n{}\n", zcash_addr);
-        println!("\n{}\n", image);
+            .build()
     }
 }
