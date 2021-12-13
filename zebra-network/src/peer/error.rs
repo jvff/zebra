@@ -33,6 +33,10 @@ pub enum PeerError {
     #[error("Internal heartbeat task exited")]
     HeartbeatTaskExited,
 
+    /// Zebra dropped the [`Connection`].
+    #[error("Internal connection dropped")]
+    ConnectionDropped,
+
     /// The remote peer did not respond to a [`peer::Client`] request in time.
     #[error("Client request timed out")]
     ClientRequestTimeout,
