@@ -7,7 +7,7 @@
 //! And it's unclear if these assumptions match the `zcashd` implementation.
 //! It should be refactored into a cleaner set of request/response pairs (#1515).
 
-use std::{collections::HashSet, fmt, pin::Pin, sync::Arc};
+use std::{borrow::Cow, collections::HashSet, fmt, pin::Pin, sync::Arc};
 
 use futures::{
     future::{self, Either},
@@ -93,21 +93,21 @@ impl fmt::Display for Handler {
 
 impl Handler {
     /// Returns the Zebra internal handler type as a string.
-    pub fn command(&self) -> String {
+    pub fn command(&self) -> Cow<'static, str> {
         match self {
-            Handler::Finished(Ok(response)) => format!("Finished({})", response.command()),
-            Handler::Finished(Err(error)) => format!("Finished({})", error),
+            Handler::Finished(Ok(response)) => format!("Finished({})", response.command()).into(),
+            Handler::Finished(Err(error)) => format!("Finished({})", error).into(),
 
-            Handler::Ping(_) => "Ping".to_string(),
-            Handler::Peers => "Peers".to_string(),
+            Handler::Ping(_) => "Ping".into(),
+            Handler::Peers => "Peers".into(),
 
-            Handler::FindBlocks { .. } => "FindBlocks".to_string(),
-            Handler::FindHeaders { .. } => "FindHeaders".to_string(),
+            Handler::FindBlocks { .. } => "FindBlocks".into(),
+            Handler::FindHeaders { .. } => "FindHeaders".into(),
 
-            Handler::BlocksByHash { .. } => "BlocksByHash".to_string(),
-            Handler::TransactionsById { .. } => "TransactionsById".to_string(),
+            Handler::BlocksByHash { .. } => "BlocksByHash".into(),
+            Handler::TransactionsById { .. } => "TransactionsById".into(),
 
-            Handler::MempoolTransactionIds => "MempoolTransactionIds".to_string(),
+            Handler::MempoolTransactionIds => "MempoolTransactionIds".into(),
         }
     }
 
