@@ -1518,7 +1518,7 @@
           "expr": "sum by(command) (zebra_net_connection_state{job=\"$job\"})",
           "hide": false,
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{command}}",
           "refId": "A"
         }
       ],
@@ -1939,5 +1939,5 @@
   "timezone": "",
   "title": "network health",
   "uid": "320aS_dMk",
-  "version": 6
+  "version": 8
 }
