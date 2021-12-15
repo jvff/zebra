@@ -53,7 +53,7 @@ impl PeerVersions {
         for peer_version in &self.peer_versions {
             let (handle, client) = MockedClientHandle::new(*peer_version);
 
-            clients.push(client);
+            clients.push(client.into());
             handles.push(handle);
         }
 
