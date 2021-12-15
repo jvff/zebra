@@ -922,14 +922,14 @@ where
                 last_metrics_state: None,
             };
 
-            tokio::spawn(
+            let connection_task = tokio::spawn(
                 server
                     .run(peer_rx)
                     .instrument(connection_span.clone())
                     .boxed(),
             );
 
-            tokio::spawn(
+            let heartbeat_task = tokio::spawn(
                 send_periodic_heartbeats(
                     connected_addr,
                     remote_services,
@@ -945,6 +945,8 @@ where
                 server_tx,
                 error_slot,
                 version: remote_version,
+                connection_task,
+                heartbeat_task,
             };
 
             Ok(client)
