@@ -5,7 +5,10 @@ mod vectors;
 
 use std::time::Duration;
 
-use futures::channel::{mpsc, oneshot};
+use futures::{
+    channel::{mpsc, oneshot},
+    future::{self, AbortHandle, FutureExt},
+};
 use tokio::task::JoinHandle;
 
 use crate::{
@@ -22,6 +25,8 @@ pub struct MockedClientHandle {
     shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
     error_slot: ErrorSlot,
     version: Version,
+    connection_aborter: AbortHandle,
+    heartbeat_aborter: AbortHandle,
 }
 
 impl MockedClientHandle {
@@ -98,6 +103,22 @@ impl MockedClientHandle {
             .try_update_error(error.into())
             .expect("unexpected earlier error in error slot")
     }
+
+    /// Stops the mock background task that handles incoming remote requests and replies.
+    pub async fn stop_connection_task(&self) {
+        self.connection_aborter.abort();
+
+        // Allow the task to detect that it was aborted.
+        tokio::task::yield_now().await;
+    }
+
+    /// Stops the mock background task that sends periodic heartbeats.
+    pub async fn stop_heartbeat_task(&self) {
+        self.heartbeat_aborter.abort();
+
+        // Allow the task to detect that it was aborted.
+        tokio::task::yield_now().await;
+    }
 }
 
 /// A representation of the result of an attempt to receive a [`ClientRequest`] sent by the mocked
@@ -163,13 +184,16 @@ impl MockClientBuilder {
         let error_slot = ErrorSlot::default();
         let version = self.version.unwrap_or(Version(0));
 
+        let (connection_task, connection_aborter) = Self::mock_background_task();
+        let (heartbeat_task, heartbeat_aborter) = Self::mock_background_task();
+
         let client = Client {
             shutdown_tx: Some(shutdown_sender),
             server_tx: request_sender,
             error_slot: error_slot.clone(),
             version,
-            connection_task: Self::mock_background_task(),
-            heartbeat_task: Self::mock_background_task(),
+            connection_task,
+            heartbeat_task,
         };
 
         let handle = MockedClientHandle {
@@ -177,6 +201,8 @@ impl MockClientBuilder {
             shutdown_receiver: Some(shutdown_receiver),
             error_slot,
             version,
+            connection_aborter,
+            heartbeat_aborter,
         };
 
         (client, handle)
@@ -184,8 +210,12 @@ impl MockClientBuilder {
 
     /// Spawn a dummy background task.
     ///
-    /// The task lives as long as [`MAX_PEER_CONNECTION_TIME`].
-    fn mock_background_task() -> JoinHandle<()> {
-        tokio::spawn(tokio::time::sleep(MAX_PEER_CONNECTION_TIME))
+    /// The task lives as long as [`MAX_PEER_CONNECTION_TIME`] or until it is aborted through the
+    /// [`AbortHandle`].
+    fn mock_background_task() -> (JoinHandle<()>, AbortHandle) {
+        let (task, abort_handle) = future::abortable(tokio::time::sleep(MAX_PEER_CONNECTION_TIME));
+        let task_handle = tokio::spawn(task.map(|_result| ()));
+
+        (task_handle, abort_handle)
     }
 }
