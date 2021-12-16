@@ -2,13 +2,13 @@
 
 use zebra_test::service_extensions::IsReady;
 
-use crate::{peer::MockedClientHandle, protocol::external::types::Version, PeerError};
+use crate::{peer::MockClientBuilder, PeerError};
 
 #[tokio::test]
 async fn client_service_ready_ok() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     assert!(client.is_ready().await);
     assert!(handle.current_error().is_none());
@@ -20,7 +20,7 @@ async fn client_service_ready_ok() {
 async fn client_service_ready_heartbeat_exit() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::HeartbeatTaskExited);
     handle.drop_shutdown_receiver();
@@ -34,7 +34,7 @@ async fn client_service_ready_heartbeat_exit() {
 async fn client_service_ready_request_drop() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::ConnectionDropped);
     handle.drop_request_receiver();
@@ -48,7 +48,7 @@ async fn client_service_ready_request_drop() {
 async fn client_service_ready_request_close() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::ConnectionClosed);
     handle.close_request_receiver();
@@ -63,7 +63,7 @@ async fn client_service_ready_request_close() {
 async fn client_service_ready_error_in_slot() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::Overloaded);
 
@@ -77,7 +77,7 @@ async fn client_service_ready_error_in_slot() {
 async fn client_service_ready_multiple_errors() {
     zebra_test::init();
 
-    let (mut handle, mut client) = MockedClientHandle::new(Version(0));
+    let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::DuplicateHandshake);
     handle.drop_shutdown_receiver();
@@ -92,7 +92,7 @@ async fn client_service_ready_multiple_errors() {
 async fn client_service_drop_cleanup() {
     zebra_test::init();
 
-    let (mut handle, client) = MockedClientHandle::new(Version(0));
+    let (client, mut handle) = MockClientBuilder::new().build();
 
     std::mem::drop(client);
 
