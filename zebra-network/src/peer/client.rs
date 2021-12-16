@@ -277,6 +277,15 @@ impl Client {
         }
     }
 
+    /// Check if the connection's task has exited.
+    fn check_connection(&mut self, context: &mut Context<'_>) -> Result<(), SharedPeerError> {
+        if self.connection_task.poll_unpin(context).is_ready() {
+            self.set_task_exited_error("connection", PeerError::ConnectionTaskExited)
+        } else {
+            Ok(())
+        }
+    }
+
     /// Properly update the error slot after a background task has unexpectedly stopped.
     fn set_task_exited_error(
         &mut self,
@@ -339,13 +348,15 @@ impl Service<Request> for Client {
         // The current task must be scheduled for wakeup every time we return
         // `Poll::Pending`.
         //
-        // `check_heartbeat` schedules the client task for wakeup
-        // if the heartbeat task exits and drops the cancel handle.
+        // `check_heartbeat` and `check_connection` schedule the client task for wakeup
+        // if either task exits, or if the heartbeat task drops the cancel handle.
         //
         //`ready!` returns `Poll::Pending` when `server_tx` is unready, and
         // schedules this task for wakeup.
 
-        let mut result = self.check_heartbeat(cx);
+        let mut result = self
+            .check_heartbeat(cx)
+            .and_then(|()| self.check_connection(cx));
 
         if result.is_ok() {
             result = ready!(self.poll_request(cx));
