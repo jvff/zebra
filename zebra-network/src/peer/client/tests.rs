@@ -143,6 +143,7 @@ impl ReceiveRequestAttempt {
     }
 
     /// Returns the received request, if there was one.
+    #[allow(dead_code)]
     pub fn request(self) -> Option<ClientRequest> {
         match self {
             ReceiveRequestAttempt::Request(request) => Some(request),
