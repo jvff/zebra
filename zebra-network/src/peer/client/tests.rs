@@ -19,29 +19,6 @@ pub struct MockedClientHandle {
 }
 
 impl MockedClientHandle {
-    /// Create a new mocked [`Client`] instance, returning it together with a handle to track it.
-    pub fn new(version: Version) -> (Self, Client) {
-        let (shutdown_sender, shutdown_receiver) = oneshot::channel();
-        let (request_sender, request_receiver) = mpsc::channel(1);
-        let error_slot = ErrorSlot::default();
-
-        let client = Client {
-            shutdown_tx: Some(shutdown_sender),
-            server_tx: request_sender,
-            error_slot: error_slot.clone(),
-            version,
-        };
-
-        let handle = MockedClientHandle {
-            request_receiver: Some(request_receiver),
-            shutdown_receiver: Some(shutdown_receiver),
-            error_slot,
-            version,
-        };
-
-        (handle, client)
-    }
-
     /// Gets the peer protocol version associated to the [`Client`].
     pub fn version(&self) -> Version {
         self.version
