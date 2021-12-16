@@ -3,12 +3,18 @@
 
 mod vectors;
 
+use std::time::Duration;
+
 use futures::channel::{mpsc, oneshot};
+use tokio::task::JoinHandle;
 
 use crate::{
     peer::{error::SharedPeerError, CancelHeartbeatTask, Client, ClientRequest, ErrorSlot},
     protocol::external::types::Version,
 };
+
+/// The maximum time a mocked peer connection should be alive during a test.
+const MAX_PEER_CONNECTION_TIME: Duration = Duration::from_secs(10);
 
 /// A handle to a mocked [`Client`] instance.
 pub struct MockedClientHandle {
@@ -162,6 +168,8 @@ impl MockClientBuilder {
             server_tx: request_sender,
             error_slot: error_slot.clone(),
             version,
+            connection_task: Self::mock_background_task(),
+            heartbeat_task: Self::mock_background_task(),
         };
 
         let handle = MockedClientHandle {
@@ -172,5 +180,12 @@ impl MockClientBuilder {
         };
 
         (client, handle)
+    }
+
+    /// Spawn a dummy background task.
+    ///
+    /// The task lives as long as [`MAX_PEER_CONNECTION_TIME`].
+    fn mock_background_task() -> JoinHandle<()> {
+        tokio::spawn(tokio::time::sleep(MAX_PEER_CONNECTION_TIME))
     }
 }
