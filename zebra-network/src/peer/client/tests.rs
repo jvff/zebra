@@ -13,7 +13,7 @@ use crate::{
 /// A handle to a mocked [`Client`] instance.
 pub struct MockedClientHandle {
     request_receiver: Option<mpsc::Receiver<ClientRequest>>,
-    shutdown_receiver: oneshot::Receiver<CancelHeartbeatTask>,
+    shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
     error_slot: ErrorSlot,
     version: Version,
 }
@@ -34,7 +34,7 @@ impl MockedClientHandle {
 
         let handle = MockedClientHandle {
             request_receiver: Some(request_receiver),
-            shutdown_receiver,
+            shutdown_receiver: Some(shutdown_receiver),
             error_slot,
             version,
         };
@@ -50,10 +50,24 @@ impl MockedClientHandle {
     /// Checks if the [`Client`] instance has not been dropped, which would have disconnected from
     /// the peer.
     pub fn is_connected(&mut self) -> bool {
-        match self.shutdown_receiver.try_recv() {
+        let receive_result = self
+            .shutdown_receiver
+            .as_mut()
+            .expect("shutdown receiver has been dropped")
+            .try_recv();
+
+        match receive_result {
             Ok(None) => true,
             Ok(Some(CancelHeartbeatTask)) | Err(oneshot::Canceled) => false,
         }
+    }
+
+    /// Drops the shutdown receiver endpoint.
+    pub fn drop_shutdown_receiver(&mut self) {
+        let _ = self
+            .shutdown_receiver
+            .take()
+            .expect("request receiver endpoint has already been dropped");
     }
 
     /// Closes the request receiver endpoint.
