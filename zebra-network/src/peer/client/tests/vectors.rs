@@ -1,8 +1,13 @@
 //! Fixed peer [`Client`] test vectors.
 
-use zebra_test::service_extensions::IsReady;
+use futures::FutureExt;
+use tower::ServiceExt;
 
-use crate::{peer::MockedClientHandle, protocol::external::types::Version, PeerError};
+use crate::{
+    peer::{Client, MockedClientHandle},
+    protocol::external::types::Version,
+    PeerError,
+};
 
 #[tokio::test]
 async fn client_service_ready_ok() {
@@ -10,7 +15,9 @@ async fn client_service_ready_ok() {
 
     let (mut handle, mut client) = MockedClientHandle::new(Version(0));
 
-    assert!(client.is_ready());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Ok(Client { .. }))));
+
     assert!(handle.current_error().is_none());
     assert!(handle.is_connected());
     assert!(handle.try_to_receive_request().is_empty());
@@ -25,7 +32,9 @@ async fn client_service_ready_heartbeat_exit() {
     handle.set_error(PeerError::HeartbeatTaskExited);
     handle.drop_shutdown_receiver();
 
-    assert!(client.not_ready_due_to_error());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Err(_))));
+
     assert!(handle.current_error().is_some());
     assert!(handle.try_to_receive_request().is_closed());
 }
@@ -39,7 +48,9 @@ async fn client_service_ready_request_drop() {
     handle.set_error(PeerError::ConnectionDropped);
     handle.drop_request_receiver();
 
-    assert!(client.not_ready_due_to_error());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Err(_))));
+
     assert!(handle.current_error().is_some());
     assert!(!handle.is_connected());
 }
@@ -53,7 +64,9 @@ async fn client_service_ready_request_close() {
     handle.set_error(PeerError::ConnectionClosed);
     handle.close_request_receiver();
 
-    assert!(client.not_ready_due_to_error());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Err(_))));
+
     assert!(handle.current_error().is_some());
     assert!(!handle.is_connected());
     assert!(handle.try_to_receive_request().is_closed());
@@ -67,7 +80,9 @@ async fn client_service_ready_error_in_slot() {
 
     handle.set_error(PeerError::Overloaded);
 
-    assert!(client.not_ready_due_to_error());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Err(_))));
+
     assert!(handle.current_error().is_some());
     assert!(!handle.is_connected());
     assert!(handle.try_to_receive_request().is_closed());
@@ -83,7 +98,9 @@ async fn client_service_ready_multiple_errors() {
     handle.drop_shutdown_receiver();
     handle.close_request_receiver();
 
-    assert!(client.not_ready_due_to_error());
+    let readiness = client.ready().now_or_never();
+    assert!(matches!(readiness, Some(Err(_))));
+
     assert!(handle.current_error().is_some());
     assert!(handle.try_to_receive_request().is_closed());
 }
