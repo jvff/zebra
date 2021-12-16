@@ -157,7 +157,9 @@ impl ReceiveRequestAttempt {
 /// Mocked data is used to construct a real [`Client`] instance. The mocked data is initialized by
 /// the [`MockClientBuilder`], and can be accessed and changed through the [`MockedClientHandle`].
 #[derive(Default)]
-pub struct MockClientBuilder;
+pub struct MockClientBuilder {
+    version: Option<Version>,
+}
 
 impl MockClientBuilder {
     /// Create a new default [`MockClientBuilder`].
@@ -165,12 +167,18 @@ impl MockClientBuilder {
         MockClientBuilder::default()
     }
 
+    /// Configure the mocked peer's version.
+    pub fn with_version(mut self, version: Version) -> Self {
+        self.version = Some(version);
+        self
+    }
+
     /// Build a [`Client`] instance with the mocked data and a [`MockedClientHandle`] to track it.
     pub fn build(self) -> (Client, MockedClientHandle) {
         let (shutdown_sender, shutdown_receiver) = oneshot::channel();
         let (request_sender, request_receiver) = mpsc::channel(1);
         let error_slot = ErrorSlot::default();
-        let version = Version(0);
+        let version = self.version.unwrap_or(Version(0));
 
         let client = Client {
             shutdown_tx: Some(shutdown_sender),
