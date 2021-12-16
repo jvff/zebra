@@ -8,6 +8,7 @@ use futures::{
     channel::{mpsc, oneshot},
     future, ready,
     stream::{Stream, StreamExt},
+    FutureExt,
 };
 use tokio::task::JoinHandle;
 use tower::Service;
@@ -260,12 +261,16 @@ impl<T: std::fmt::Debug> Drop for MustUseOneshotSender<T> {
 impl Client {
     /// Check if this connection's heartbeat task has exited.
     fn check_heartbeat(&mut self, cx: &mut Context<'_>) -> Result<(), SharedPeerError> {
-        if let Poll::Ready(()) = self
+        let is_canceled = self
             .shutdown_tx
             .as_mut()
             .expect("only taken on drop")
             .poll_canceled(cx)
-        {
+            .is_ready();
+
+        let has_stopped = self.heartbeat_task.poll_unpin(cx).is_ready();
+
+        if is_canceled || has_stopped {
             // Make sure there is an error in the slot
             let heartbeat_error: SharedPeerError = PeerError::HeartbeatTaskExited.into();
             let original_error = self.error_slot.try_update_error(heartbeat_error.clone());
@@ -325,7 +330,7 @@ impl Service<Request> for Client {
         // The current task must be scheduled for wakeup every time we return
         // `Poll::Pending`.
         //
-        // `poll_canceled` schedules the client task for wakeup
+        // `check_heartbeat` schedules the client task for wakeup
         // if the heartbeat task exits and drops the cancel handle.
         //
         //`ready!` returns `Poll::Pending` when `server_tx` is unready, and
@@ -347,8 +352,6 @@ impl Service<Request> for Client {
     }
 
     fn call(&mut self, request: Request) -> Self::Future {
-        use futures::future::FutureExt;
-
         let (tx, rx) = oneshot::channel();
         // get the current Span to propagate it to the peer connection task.
         // this allows the peer connection to enter the correct tracing context
