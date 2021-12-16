@@ -1,0 +1,13 @@
+[package]
+name = "now-or-later"
+version = "1.0.0-beta.2"
+authors = ["Zcash Foundation <zebra@zfnd.org>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[dependencies]
+pin-project = "1.0.7"
+
+[dev-dependencies]
+futures = "0.3.18"
+tokio = { version = "1.14.0", features = ["full"] }
