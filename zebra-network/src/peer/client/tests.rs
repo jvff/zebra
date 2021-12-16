@@ -151,3 +151,41 @@ impl ReceiveRequestAttempt {
         }
     }
 }
+
+/// A builder for a [`Client`] and [`MockedClientHandle`] instance.
+///
+/// Mocked data is used to construct a real [`Client`] instance. The mocked data is initialized by
+/// the [`MockClientBuilder`], and can be accessed and changed through the [`MockedClientHandle`].
+#[derive(Default)]
+pub struct MockClientBuilder;
+
+impl MockClientBuilder {
+    /// Create a new default [`MockClientBuilder`].
+    pub fn new() -> Self {
+        MockClientBuilder::default()
+    }
+
+    /// Build a [`Client`] instance with the mocked data and a [`MockedClientHandle`] to track it.
+    pub fn build(self) -> (Client, MockedClientHandle) {
+        let (shutdown_sender, shutdown_receiver) = oneshot::channel();
+        let (request_sender, request_receiver) = mpsc::channel(1);
+        let error_slot = ErrorSlot::default();
+        let version = Version(0);
+
+        let client = Client {
+            shutdown_tx: Some(shutdown_sender),
+            server_tx: request_sender,
+            error_slot: error_slot.clone(),
+            version,
+        };
+
+        let handle = MockedClientHandle {
+            request_receiver: Some(request_receiver),
+            shutdown_receiver: Some(shutdown_receiver),
+            error_slot,
+            version,
+        };
+
+        (client, handle)
+    }
+}
