@@ -18,7 +18,7 @@ use zebra_chain::{
 
 use super::MorePeers;
 use crate::{
-    peer::{LoadTrackedClient, MinimumPeerVersion, MockedClientHandle},
+    peer::{LoadTrackedClient, MinimumPeerVersion, MockClientBuilder, MockedClientHandle},
     peer_set::PeerSet,
     protocol::external::{types::Version, InventoryHash},
     AddressBook, Config,
@@ -51,7 +51,7 @@ impl PeerVersions {
         let mut handles = Vec::with_capacity(self.peer_versions.len());
 
         for peer_version in &self.peer_versions {
-            let (handle, client) = MockedClientHandle::new(*peer_version);
+            let (client, handle) = MockClientBuilder::new().with_version(*peer_version).build();
 
             clients.push(client.into());
             handles.push(handle);
