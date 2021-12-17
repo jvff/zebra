@@ -10,7 +10,7 @@ use crate::{
     protocol::external::types::Version,
 };
 
-/// A handle to a mocked [`Client`] instance.
+/// A handle to the mocked channels for testing a [`Client`] instance.
 pub struct MockedClientHandle {
     request_receiver: Option<mpsc::Receiver<ClientRequest>>,
     shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
