@@ -12,7 +12,7 @@ async fn client_service_ready_ok() {
 
     assert!(client.is_ready().await);
     assert!(handle.current_error().is_none());
-    assert!(handle.is_connected());
+    assert!(handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_empty());
 }
 
@@ -41,7 +41,7 @@ async fn client_service_ready_request_drop() {
 
     assert!(client.not_ready_due_to_error().await);
     assert!(handle.current_error().is_some());
-    assert!(!handle.is_connected());
+    assert!(!handle.wants_connection_heartbeats());
 }
 
 #[tokio::test]
@@ -55,7 +55,7 @@ async fn client_service_ready_request_close() {
 
     assert!(client.not_ready_due_to_error().await);
     assert!(handle.current_error().is_some());
-    assert!(!handle.is_connected());
+    assert!(!handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_closed());
 }
 
@@ -69,7 +69,7 @@ async fn client_service_ready_error_in_slot() {
 
     assert!(client.not_ready_due_to_error().await);
     assert!(handle.current_error().is_some());
-    assert!(!handle.is_connected());
+    assert!(!handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_closed());
 }
 
@@ -97,6 +97,6 @@ async fn client_service_drop_cleanup() {
     std::mem::drop(client);
 
     assert!(handle.current_error().is_some());
-    assert!(!handle.is_connected());
+    assert!(!handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_closed());
 }
