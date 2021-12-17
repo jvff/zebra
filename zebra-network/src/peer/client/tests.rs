@@ -43,8 +43,8 @@ impl MockedClientHandle {
         }
     }
 
-    /// Drops the shutdown receiver endpoint.
-    pub fn drop_shutdown_receiver(&mut self) {
+    /// Drops the mocked heartbeat shutdown receiver endpoint.
+    pub fn drop_heartbeat_shutdown_receiver(&mut self) {
         let _ = self
             .shutdown_receiver
             .take()
