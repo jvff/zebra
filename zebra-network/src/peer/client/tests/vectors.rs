@@ -150,3 +150,23 @@ async fn client_service_handles_exited_heartbeat_task() {
     assert!(!harness.wants_connection_heartbeats());
     assert!(harness.try_to_receive_outbound_client_request().is_closed());
 }
+
+/// Force the heartbeat background task to panic, and check if the `Client` properly handles it.
+#[tokio::test]
+async fn client_service_handles_panicked_heartbeat_task() {
+    zebra_test::init();
+
+    let (mut client, mut harness) = ClientTestHarness::build()
+        .with_heartbeat_task(async move {
+            panic!("heartbeat task failure");
+        })
+        .finish();
+
+    // Allow the custom heartbeat task to run.
+    tokio::task::yield_now().await;
+
+    assert!(client.is_failed().await);
+    assert!(harness.current_error().is_some());
+    assert!(!harness.wants_connection_heartbeats());
+    assert!(harness.try_to_receive_outbound_client_request().is_closed());
+}
