@@ -24,9 +24,13 @@ impl MockedClientHandle {
         self.version
     }
 
-    /// Checks if the [`Client`] instance has not been dropped, which would have disconnected from
-    /// the peer.
-    pub fn is_connected(&mut self) -> bool {
+    /// Returns true if the [`Client`] instance still wants connection heartbeats to be sent.
+    ///
+    /// Checks that the client:
+    /// - has not been dropped,
+    /// - has not closed or dropped the mocked heartbeat task channel, and
+    /// - has not asked the mocked heartbeat task to shut down.
+    pub fn wants_connection_heartbeats(&mut self) -> bool {
         let receive_result = self
             .shutdown_receiver
             .as_mut()

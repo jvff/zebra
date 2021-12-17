@@ -122,7 +122,7 @@ where
 
     for handle in handles {
         let is_outdated = handle.version() < minimum_version;
-        let is_connected = handle.is_connected();
+        let is_connected = handle.wants_connection_heartbeats();
 
         prop_assert!(
             is_connected != is_outdated,
