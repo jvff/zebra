@@ -25,7 +25,7 @@ async fn client_service_ready_heartbeat_exit() {
     handle.set_error(PeerError::HeartbeatTaskExited);
     handle.drop_heartbeat_shutdown_receiver();
 
-    assert!(client.not_ready_due_to_error().await);
+    assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(handle.try_to_receive_request().is_closed());
 }
@@ -39,7 +39,7 @@ async fn client_service_ready_request_drop() {
     handle.set_error(PeerError::ConnectionDropped);
     handle.drop_request_receiver();
 
-    assert!(client.not_ready_due_to_error().await);
+    assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
 }
@@ -53,7 +53,7 @@ async fn client_service_ready_request_close() {
     handle.set_error(PeerError::ConnectionClosed);
     handle.close_request_receiver();
 
-    assert!(client.not_ready_due_to_error().await);
+    assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_closed());
@@ -67,7 +67,7 @@ async fn client_service_ready_error_in_slot() {
 
     handle.set_error(PeerError::Overloaded);
 
-    assert!(client.not_ready_due_to_error().await);
+    assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
     assert!(handle.try_to_receive_request().is_closed());
@@ -83,7 +83,7 @@ async fn client_service_ready_multiple_errors() {
     handle.drop_heartbeat_shutdown_receiver();
     handle.close_request_receiver();
 
-    assert!(client.not_ready_due_to_error().await);
+    assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(handle.try_to_receive_request().is_closed());
 }
