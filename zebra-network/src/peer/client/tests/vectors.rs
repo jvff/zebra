@@ -150,3 +150,23 @@ async fn client_service_handles_exited_heartbeat_task() {
     assert!(!handle.is_connected());
     assert!(handle.try_to_receive_request().is_closed());
 }
+
+/// Force the heartbeat background task to panic, and check if the `Client` properly handles it.
+#[tokio::test]
+async fn client_service_handles_panicked_heartbeat_task() {
+    zebra_test::init();
+
+    let (mut client, mut handle) = MockClientBuilder::new()
+        .with_heartbeat_task(async move {
+            panic!("heartbeat task failure");
+        })
+        .build();
+
+    // Allow the custom heartbeat task to run.
+    tokio::task::yield_now().await;
+
+    assert!(client.not_ready_due_to_error().await);
+    assert!(handle.current_error().is_some());
+    assert!(!handle.is_connected());
+    assert!(handle.try_to_receive_request().is_closed());
+}
