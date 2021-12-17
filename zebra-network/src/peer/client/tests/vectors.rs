@@ -23,7 +23,7 @@ async fn client_service_ready_heartbeat_exit() {
     let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::HeartbeatTaskExited);
-    handle.drop_shutdown_receiver();
+    handle.drop_heartbeat_shutdown_receiver();
 
     assert!(client.not_ready_due_to_error().await);
     assert!(handle.current_error().is_some());
@@ -80,7 +80,7 @@ async fn client_service_ready_multiple_errors() {
     let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::DuplicateHandshake);
-    handle.drop_shutdown_receiver();
+    handle.drop_heartbeat_shutdown_receiver();
     handle.close_request_receiver();
 
     assert!(client.not_ready_due_to_error().await);
