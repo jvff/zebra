@@ -22,6 +22,7 @@ use zebra_chain::{
     block,
     chain_tip::{ChainTip, NoChainTip},
     parameters::Network,
+    serialization::AtLeastOne,
 };
 
 use crate::{
@@ -31,7 +32,7 @@ use crate::{
         CancelHeartbeatTask, Client, ClientRequest, Connection, ErrorSlot, HandshakeError,
         MinimumPeerVersion, PeerError,
     },
-    peer_set::ConnectionTracker,
+    peer_set::{ConnectionTracker, InventoryChange},
     protocol::{
         external::{types::*, AddrInVersion, Codec, InventoryHash, Message},
         internal::{Request, Response},
@@ -53,7 +54,7 @@ pub struct Handshake<S, C = NoChainTip> {
     config: Config,
     inbound_service: S,
     address_book_updater: tokio::sync::mpsc::Sender<MetaAddrChange>,
-    inv_collector: broadcast::Sender<(InventoryHash, SocketAddr)>,
+    inv_collector: broadcast::Sender<InventoryChange>,
     nonces: Arc<futures::lock::Mutex<HashSet<Nonce>>>,
     user_agent: String,
     our_services: PeerServices,
@@ -308,7 +309,7 @@ pub struct Builder<S, C = NoChainTip> {
     our_services: Option<PeerServices>,
     user_agent: Option<String>,
     relay: Option<bool>,
-    inv_collector: Option<broadcast::Sender<(InventoryHash, SocketAddr)>>,
+    inv_collector: Option<broadcast::Sender<InventoryChange>>,
     latest_chain_tip: C,
 }
 
@@ -336,7 +337,7 @@ where
     /// to look up peers that have specific inventory.
     pub fn with_inventory_collector(
         mut self,
-        inv_collector: broadcast::Sender<(InventoryHash, SocketAddr)>,
+        inv_collector: broadcast::Sender<InventoryChange>,
     ) -> Self {
         self.inv_collector = Some(inv_collector);
         self
@@ -878,13 +879,17 @@ where
                             //
                             // https://zebra.zfnd.org/dev/rfcs/0003-inventory-tracking.html#inventory-monitoring
                             //
-                            // TODO: zcashd has a bug where it merges queued inv messages of
-                            // the same or different types. So Zebra should split small
-                            // merged inv messages into separate inv messages. (#1768)
+                            // Note: zcashd has a bug where it merges queued inv messages of
+                            // the same or different types. Zebra compensates by sending `notfound`
+                            // responses to the inv collector. (#2156, #1768)
+                            //
+                            // (We can't split `inv`s, because that fills the inventory registry
+                            // with useless entries that the whole network has, making it large and slow.)
                             match hashes.as_slice() {
                                 [hash @ InventoryHash::Block(_)] => {
                                     debug!(?hash, "registering gossiped block inventory for peer");
-                                    let _ = inv_collector.send((*hash, transient_addr));
+                                    let change = (AtLeastOne::from_one(*hash), transient_addr);
+                                    let _ = inv_collector.send(InventoryChange::Advertised(change));
                                 }
                                 [hashes @ ..] => {
                                     for hash in hashes {
@@ -892,7 +897,8 @@ where
                                             debug!(?unmined_tx_id, "registering unmined transaction inventory for peer");
                                             // The peer set and inv collector use the peer's remote
                                             // address as an identifier
-                                            let _ = inv_collector.send((*hash, transient_addr));
+                                            let change = (AtLeastOne::from_one(*hash), transient_addr);
+                                            let _ = inv_collector.send(InventoryChange::Advertised(change));
                                         } else {
                                             trace!(?hash, "ignoring non-transaction inventory hash in multi-hash list")
                                         }
