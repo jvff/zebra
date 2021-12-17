@@ -100,3 +100,18 @@ async fn client_service_drop_cleanup() {
     assert!(!handle.is_connected());
     assert!(handle.try_to_receive_request().is_closed());
 }
+
+/// Force the connection background task to stop, and check if the `Client` properly handles it.
+#[tokio::test]
+async fn client_service_handles_exited_connection_task() {
+    zebra_test::init();
+
+    let (mut client, mut handle) = MockClientBuilder::new().build();
+
+    handle.stop_connection_task().await;
+
+    assert!(client.not_ready_due_to_error().await);
+    assert!(handle.current_error().is_some());
+    assert!(!handle.is_connected());
+    assert!(handle.try_to_receive_request().is_closed());
+}
