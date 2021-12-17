@@ -971,7 +971,7 @@ where
 /// The address book state can be updated via `ClientRequest.tx`, or the
 /// heartbeat_ts_collector.
 ///
-/// Returning from the spawned closure terminates the connection's heartbeat task.
+/// Returning from this function terminates the connection's heartbeat task.
 async fn send_periodic_heartbeats(
     connected_addr: ConnectedAddr,
     remote_services: PeerServices,
