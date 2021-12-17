@@ -25,7 +25,6 @@ proptest! {
     ) {
         let runtime = zebra_test::init_async();
 
-        let (discovered_peers, mut handles) = peer_versions.mock_peer_discovery();
         let (mut minimum_peer_version, best_tip_height) =
             MinimumPeerVersion::with_mock_chain_tip(network);
 
@@ -36,6 +35,7 @@ proptest! {
         let current_minimum_version = minimum_peer_version.current();
 
         runtime.block_on(async move {
+            let (discovered_peers, mut handles) = peer_versions.mock_peer_discovery();
             let (mut peer_set, _peer_set_guard) = PeerSetBuilder::new()
                 .with_discover(discovered_peers)
                 .with_minimum_peer_version(minimum_peer_version)
@@ -59,7 +59,6 @@ proptest! {
     ) {
         let runtime = zebra_test::init_async();
 
-        let (discovered_peers, mut handles) = peer_versions.mock_peer_discovery();
         let (mut minimum_peer_version, best_tip_height) =
             MinimumPeerVersion::with_mock_chain_tip(block_heights.network);
 
@@ -68,6 +67,7 @@ proptest! {
             .expect("receiving endpoint lives as long as `minimum_peer_version`");
 
         runtime.block_on(async move {
+            let (discovered_peers, mut handles) = peer_versions.mock_peer_discovery();
             let (mut peer_set, _peer_set_guard) = PeerSetBuilder::new()
                 .with_discover(discovered_peers)
                 .with_minimum_peer_version(minimum_peer_version.clone())
