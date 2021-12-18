@@ -6,11 +6,9 @@ use tower::{discover::Discover, BoxError, ServiceExt};
 
 use zebra_chain::{block, chain_tip::ChainTip, parameters::Network};
 
-use super::{
-    BlockHeightPairAcrossNetworkUpgrades, ClientTestHarness, PeerSetBuilder, PeerVersions,
-};
+use super::{BlockHeightPairAcrossNetworkUpgrades, PeerSetBuilder, PeerVersions};
 use crate::{
-    peer::{LoadTrackedClient, MinimumPeerVersion},
+    peer::{ClientTestHarness, LoadTrackedClient, MinimumPeerVersion},
     peer_set::PeerSet,
     protocol::external::types::Version,
 };
