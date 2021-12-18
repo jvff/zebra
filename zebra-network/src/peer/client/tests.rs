@@ -166,13 +166,13 @@ impl ClientTestHarnessBuilder {
     /// Build a [`Client`] instance with the mocked data and a [`ClientTestHarness`] to track it.
     pub fn finish(self) -> (Client, ClientTestHarness) {
         let (shutdown_sender, shutdown_receiver) = oneshot::channel();
-        let (request_sender, client_request_receiver) = mpsc::channel(1);
+        let (client_request_sender, client_request_receiver) = mpsc::channel(1);
         let error_slot = ErrorSlot::default();
         let version = self.version.unwrap_or(Version(0));
 
         let client = Client {
             shutdown_tx: Some(shutdown_sender),
-            server_tx: request_sender,
+            server_tx: client_request_sender,
             error_slot: error_slot.clone(),
             version,
         };
