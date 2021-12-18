@@ -11,14 +11,14 @@ use crate::{
 };
 
 /// A handle to the mocked channels for testing a [`Client`] instance.
-pub struct MockedClientHandle {
+pub struct ClientTestHarness {
     client_request_receiver: Option<mpsc::Receiver<ClientRequest>>,
     shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
     error_slot: ErrorSlot,
     version: Version,
 }
 
-impl MockedClientHandle {
+impl ClientTestHarness {
     /// Gets the peer protocol version associated to the [`Client`].
     pub fn version(&self) -> Version {
         self.version
@@ -141,19 +141,19 @@ impl ReceiveRequestAttempt {
     }
 }
 
-/// A builder for a [`Client`] and [`MockedClientHandle`] instance.
+/// A builder for a [`Client`] and [`ClientTestHarness`] instance.
 ///
 /// Mocked data is used to construct a real [`Client`] instance. The mocked data is initialized by
-/// the [`MockClientBuilder`], and can be accessed and changed through the [`MockedClientHandle`].
+/// the [`TestClientBuilder`], and can be accessed and changed through the [`ClientTestHarness`].
 #[derive(Default)]
-pub struct MockClientBuilder {
+pub struct TestClientBuilder {
     version: Option<Version>,
 }
 
-impl MockClientBuilder {
-    /// Create a new default [`MockClientBuilder`].
+impl TestClientBuilder {
+    /// Create a new default [`TestClientBuilder`].
     pub fn new() -> Self {
-        MockClientBuilder::default()
+        TestClientBuilder::default()
     }
 
     /// Configure the mocked peer's version.
@@ -162,8 +162,8 @@ impl MockClientBuilder {
         self
     }
 
-    /// Build a [`Client`] instance with the mocked data and a [`MockedClientHandle`] to track it.
-    pub fn build(self) -> (Client, MockedClientHandle) {
+    /// Build a [`Client`] instance with the mocked data and a [`ClientTestHarness`] to track it.
+    pub fn build(self) -> (Client, ClientTestHarness) {
         let (shutdown_sender, shutdown_receiver) = oneshot::channel();
         let (request_sender, client_request_receiver) = mpsc::channel(1);
         let error_slot = ErrorSlot::default();
@@ -176,7 +176,7 @@ impl MockClientBuilder {
             version,
         };
 
-        let handle = MockedClientHandle {
+        let handle = ClientTestHarness {
             client_request_receiver: Some(client_request_receiver),
             shutdown_receiver: Some(shutdown_receiver),
             error_slot,

@@ -33,7 +33,7 @@ use crate::{
     address_book_updater::AddressBookUpdater,
     constants, init,
     meta_addr::MetaAddr,
-    peer::{self, HandshakeRequest, MockClientBuilder, OutboundConnectorRequest},
+    peer::{self, HandshakeRequest, OutboundConnectorRequest, TestClientBuilder},
     peer_set::{
         initialize::{
             accept_inbound_connections, add_initial_peers, crawl_and_dial, open_listener,
@@ -348,7 +348,7 @@ async fn crawler_peer_limit_one_connect_ok_then_drop() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Fake the connection closing.
             std::mem::drop(connection_tracker);
@@ -412,7 +412,7 @@ async fn crawler_peer_limit_one_connect_ok_stay_open() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Make the connection staying open.
             peer_tracker_tx
@@ -523,7 +523,7 @@ async fn crawler_peer_limit_default_connect_ok_then_drop() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Fake the connection closing.
             std::mem::drop(connection_tracker);
@@ -589,7 +589,7 @@ async fn crawler_peer_limit_default_connect_ok_stay_open() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Make the connection staying open.
             peer_tracker_tx
@@ -732,7 +732,7 @@ async fn listener_peer_limit_one_handshake_ok_then_drop() {
             connection_tracker,
         } = req;
 
-        let (fake_client, _handle) = MockClientBuilder::new().build();
+        let (fake_client, _harness) = TestClientBuilder::new().build();
 
         // Actually close the connection.
         std::mem::drop(connection_tracker);
@@ -800,7 +800,7 @@ async fn listener_peer_limit_one_handshake_ok_stay_open() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Make the connection staying open.
             peer_tracker_tx
@@ -920,7 +920,7 @@ async fn listener_peer_limit_default_handshake_ok_then_drop() {
             connection_tracker,
         } = req;
 
-        let (fake_client, _handle) = MockClientBuilder::new().build();
+        let (fake_client, _harness) = TestClientBuilder::new().build();
 
         // Actually close the connection.
         std::mem::drop(connection_tracker);
@@ -988,7 +988,7 @@ async fn listener_peer_limit_default_handshake_ok_stay_open() {
                 connection_tracker,
             } = req;
 
-            let (fake_client, _handle) = MockClientBuilder::new().build();
+            let (fake_client, _harness) = TestClientBuilder::new().build();
 
             // Make the connection staying open.
             peer_tracker_tx
