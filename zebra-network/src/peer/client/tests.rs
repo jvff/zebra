@@ -19,6 +19,12 @@ pub struct ClientTestHarness {
 }
 
 impl ClientTestHarness {
+    /// Create a [`ClientTestHarnessBuilder`] instance to help create a new [`Client`] instance
+    /// and a [`ClientTestHarness`] to track it.
+    pub fn build() -> ClientTestHarnessBuilder {
+        ClientTestHarnessBuilder { version: None }
+    }
+
     /// Gets the peer protocol version associated to the [`Client`].
     pub fn version(&self) -> Version {
         self.version
@@ -144,26 +150,21 @@ impl ReceiveRequestAttempt {
 /// A builder for a [`Client`] and [`ClientTestHarness`] instance.
 ///
 /// Mocked data is used to construct a real [`Client`] instance. The mocked data is initialized by
-/// the [`TestClientBuilder`], and can be accessed and changed through the [`ClientTestHarness`].
-#[derive(Default)]
-pub struct TestClientBuilder {
+/// the [`ClientTestHarnessBuilder`], and can be accessed and changed through the
+/// [`ClientTestHarness`].
+pub struct ClientTestHarnessBuilder {
     version: Option<Version>,
 }
 
-impl TestClientBuilder {
-    /// Create a new default [`TestClientBuilder`].
-    pub fn new() -> Self {
-        TestClientBuilder::default()
-    }
-
-    /// Configure the mocked peer's version.
+impl ClientTestHarnessBuilder {
+    /// Configure the mocked version for the peer.
     pub fn with_version(mut self, version: Version) -> Self {
         self.version = Some(version);
         self
     }
 
     /// Build a [`Client`] instance with the mocked data and a [`ClientTestHarness`] to track it.
-    pub fn build(self) -> (Client, ClientTestHarness) {
+    pub fn finish(self) -> (Client, ClientTestHarness) {
         let (shutdown_sender, shutdown_receiver) = oneshot::channel();
         let (request_sender, client_request_receiver) = mpsc::channel(1);
         let error_slot = ErrorSlot::default();
