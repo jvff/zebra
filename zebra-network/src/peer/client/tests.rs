@@ -40,7 +40,7 @@ impl ClientTestHarness {
         let receive_result = self
             .shutdown_receiver
             .as_mut()
-            .expect("shutdown receiver has been dropped")
+            .expect("heartbeat shutdown receiver endpoint has been dropped")
             .try_recv();
 
         match receive_result {
@@ -54,7 +54,7 @@ impl ClientTestHarness {
         let _ = self
             .shutdown_receiver
             .take()
-            .expect("request receiver endpoint has already been dropped");
+            .expect("heartbeat shutdown receiver endpoint has already been dropped");
     }
 
     /// Closes the receiver endpoint of [`ClientRequests`] that are supposed to be sent to the
