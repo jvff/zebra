@@ -10,7 +10,7 @@ use crate::{
     protocol::external::types::Version,
 };
 
-/// A handle to the mocked channels for testing a [`Client`] instance.
+/// A harness with mocked channels for testing a [`Client`] instance.
 pub struct ClientTestHarness {
     client_request_receiver: Option<mpsc::Receiver<ClientRequest>>,
     shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
@@ -176,13 +176,13 @@ impl TestClientBuilder {
             version,
         };
 
-        let handle = ClientTestHarness {
+        let harness = ClientTestHarness {
             client_request_receiver: Some(client_request_receiver),
             shutdown_receiver: Some(shutdown_receiver),
             error_slot,
             version,
         };
 
-        (client, handle)
+        (client, harness)
     }
 }
