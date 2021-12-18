@@ -13,7 +13,7 @@ async fn client_service_ready_ok() {
     assert!(client.is_ready().await);
     assert!(handle.current_error().is_none());
     assert!(handle.wants_connection_heartbeats());
-    assert!(handle.try_to_receive_request().is_empty());
+    assert!(handle.try_to_receive_outbound_client_request().is_empty());
 }
 
 #[tokio::test]
@@ -27,7 +27,7 @@ async fn client_service_ready_heartbeat_exit() {
 
     assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
-    assert!(handle.try_to_receive_request().is_closed());
+    assert!(handle.try_to_receive_outbound_client_request().is_closed());
 }
 
 #[tokio::test]
@@ -37,7 +37,7 @@ async fn client_service_ready_request_drop() {
     let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::ConnectionDropped);
-    handle.drop_request_receiver();
+    handle.drop_outbound_client_request_receiver();
 
     assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
@@ -51,12 +51,12 @@ async fn client_service_ready_request_close() {
     let (mut client, mut handle) = MockClientBuilder::new().build();
 
     handle.set_error(PeerError::ConnectionClosed);
-    handle.close_request_receiver();
+    handle.close_outbound_client_request_receiver();
 
     assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
-    assert!(handle.try_to_receive_request().is_closed());
+    assert!(handle.try_to_receive_outbound_client_request().is_closed());
 }
 
 #[tokio::test]
@@ -70,7 +70,7 @@ async fn client_service_ready_error_in_slot() {
     assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
-    assert!(handle.try_to_receive_request().is_closed());
+    assert!(handle.try_to_receive_outbound_client_request().is_closed());
 }
 
 #[tokio::test]
@@ -81,11 +81,11 @@ async fn client_service_ready_multiple_errors() {
 
     handle.set_error(PeerError::DuplicateHandshake);
     handle.drop_heartbeat_shutdown_receiver();
-    handle.close_request_receiver();
+    handle.close_outbound_client_request_receiver();
 
     assert!(client.is_failed().await);
     assert!(handle.current_error().is_some());
-    assert!(handle.try_to_receive_request().is_closed());
+    assert!(handle.try_to_receive_outbound_client_request().is_closed());
 }
 
 #[tokio::test]
@@ -98,5 +98,5 @@ async fn client_service_drop_cleanup() {
 
     assert!(handle.current_error().is_some());
     assert!(!handle.wants_connection_heartbeats());
-    assert!(handle.try_to_receive_request().is_closed());
+    assert!(handle.try_to_receive_outbound_client_request().is_closed());
 }
