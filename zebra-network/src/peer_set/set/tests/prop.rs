@@ -7,7 +7,7 @@ use tower::{discover::Discover, BoxError, ServiceExt};
 use zebra_chain::{block, chain_tip::ChainTip, parameters::Network};
 
 use super::{
-    BlockHeightPairAcrossNetworkUpgrades, MockedClientHandle, PeerSetBuilder, PeerVersions,
+    BlockHeightPairAcrossNetworkUpgrades, ClientTestHarness, PeerSetBuilder, PeerVersions,
 };
 use crate::{
     peer::{LoadTrackedClient, MinimumPeerVersion},
@@ -100,7 +100,7 @@ proptest! {
 /// `handles` to assert that only up-to-date peers are kept by the `peer_set`.
 fn check_if_only_up_to_date_peers_are_live<D, C>(
     peer_set: &mut PeerSet<D, C>,
-    handles: &mut Vec<MockedClientHandle>,
+    handles: &mut Vec<ClientTestHarness>,
     minimum_version: Version,
 ) -> Result<(), TestCaseError>
 where
