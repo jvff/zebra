@@ -268,12 +268,23 @@ impl Client {
             .poll_canceled(cx)
             .is_ready();
 
-        let has_stopped = self.heartbeat_task.poll_unpin(cx).is_ready();
+        if is_canceled {
+            return self.set_task_exited_error("heartbeat", PeerError::HeartbeatTaskExited);
+        }
 
-        if is_canceled || has_stopped {
-            self.set_task_exited_error("heartbeat", PeerError::HeartbeatTaskExited)
-        } else {
-            Ok(())
+        match self.heartbeat_task.poll_unpin(cx) {
+            Poll::Pending => {
+                // Heartbeat task is still running.
+                Ok(())
+            }
+            Poll::Ready(Ok(())) => {
+                // Heartbeat task stopped unexpectedly, without panicking.
+                self.set_task_exited_error("heartbeat", PeerError::HeartbeatTaskExited)
+            }
+            Poll::Ready(Err(error)) => {
+                // Heartbeat task stopped unexpectedly with a panic.
+                panic!("heartbeat task has panicked: {}", error);
+            }
         }
     }
 
