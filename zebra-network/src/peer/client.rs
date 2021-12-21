@@ -279,10 +279,19 @@ impl Client {
 
     /// Check if the connection's task has exited.
     fn check_connection(&mut self, context: &mut Context<'_>) -> Result<(), SharedPeerError> {
-        if self.connection_task.poll_unpin(context).is_ready() {
-            self.set_task_exited_error("connection", PeerError::ConnectionTaskExited)
-        } else {
-            Ok(())
+        match self.connection_task.poll_unpin(context) {
+            Poll::Pending => {
+                // Connection task is still running.
+                Ok(())
+            }
+            Poll::Ready(Ok(())) => {
+                // Connection task stopped unexpectedly, without panicking.
+                self.set_task_exited_error("connection", PeerError::ConnectionTaskExited)
+            }
+            Poll::Ready(Err(error)) => {
+                // Connection task stopped unexpectedly with a panic.
+                panic!("connection task has panicked: {}", error);
+            }
         }
     }
 
