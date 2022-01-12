@@ -1004,20 +1004,16 @@ async fn send_periodic_heartbeats_with_shutdown_handle(
     // are ready, we want the shutdown to take priority over
     // sending a useless heartbeat.
     let _result = match future::select(shutdown_rx, heartbeat_run_loop).await {
-        Either::Left((Ok(CancelHeartbeatTask), _unused_run_loop)) => {
-            tracing::trace!("shutting down because Client requested shut down");
+        Either::Left((result, _unused_run_loop)) => {
+            let reason = match result {
+                Ok(CancelHeartbeatTask) => "Client requested shut down",
+                Err(oneshot::Canceled) => "Client was dropped",
+            };
+
+            tracing::trace!("shutting down because {}", reason);
+
             handle_heartbeat_shutdown(
                 PeerError::ClientCancelledHeartbeatTask,
-                &mut heartbeat_ts_collector,
-                &connected_addr,
-                &remote_services,
-            )
-            .await
-        }
-        Either::Left((Err(oneshot::Canceled), _unused_run_loop)) => {
-            tracing::trace!("shutting down because Client was dropped");
-            handle_heartbeat_shutdown(
-                PeerError::ClientDropped,
                 &mut heartbeat_ts_collector,
                 &connected_addr,
                 &remote_services,
