@@ -128,7 +128,11 @@ impl Handler {
     /// interpretable as a response, we return ownership to the caller.
     ///
     /// Unexpected messages are left unprocessed, and may be rejected later.
-    fn process_message(&mut self, msg: Message) -> Option<Message> {
+    fn process_message(
+        &mut self,
+        msg: Message,
+        peer_data: super::handshake::ConnectedAddr,
+    ) -> Option<Message> {
         let mut ignored_msg = None;
         // XXX can this be avoided?
         let tmp_state = std::mem::replace(self, Handler::Finished(Ok(Response::Nil)));
@@ -253,6 +257,7 @@ impl Handler {
                 //   - missing blocks are silently skipped
                 //     (there is no `NotFound` message at the end of the batch)
                 if pending_hashes.remove(&block.hash()) {
+                    trace!("JANITO: Got expected block from {:?}", peer_data);
                     // we are in the middle of the continuous block messages
                     blocks.push(block);
                     if pending_hashes.is_empty() {
@@ -264,6 +269,7 @@ impl Handler {
                         }
                     }
                 } else {
+                    trace!("JANITO: Got unexpected block from {:?}", peer_data);
                     // We got a block we didn't ask for.
                     //
                     // So either:
@@ -300,6 +306,7 @@ impl Handler {
                 },
                 Message::NotFound(items),
             ) => {
+                trace!("JANITO: Did not get block from {:?}", peer_data);
                 // assumptions:
                 //   - the peer eventually returns a block or a `NotFound` entry
                 //     for each hash
@@ -493,6 +500,8 @@ pub struct Connection<S, Tx> {
 
     /// The state for this peer, when the metrics were last updated.
     pub(super) last_metrics_state: Option<Cow<'static, str>>,
+
+    pub(super) peer_data: super::handshake::ConnectedAddr,
 }
 
 impl<S, Tx> Connection<S, Tx>
@@ -530,6 +539,7 @@ where
         // check whether it can be interpreted as a response to the pending request.
         //
         // TODO: turn this comment into a module-level comment, after splitting the module.
+        let peer_data = self.peer_data;
         loop {
             self.update_state_metrics(None);
 
@@ -669,7 +679,7 @@ where
                             let request_msg = match self.state {
                                 State::AwaitingResponse {
                                     ref mut handler, ..
-                                } => span.in_scope(|| handler.process_message(peer_msg)),
+                                } => span.in_scope(|| handler.process_message(peer_msg, peer_data)),
                                 _ => unreachable!("unexpected state after AwaitingResponse: {:?}, peer_msg: {:?}, client_receiver: {:?}",
                                                   self.state,
                                                   peer_msg,
@@ -837,6 +847,7 @@ where
                 .map(|()| Handler::Ping(nonce)),
 
             (AwaitingRequest, BlocksByHash(hashes)) => {
+                trace!("JANITO: requesting {} blocks from peer {:?}", hashes.len(), self.peer_data);
                 self
                     .peer_tx
                     .send(Message::GetData(

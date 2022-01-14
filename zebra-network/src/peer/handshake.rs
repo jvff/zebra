@@ -923,6 +923,7 @@ where
                 connection_tracker,
                 metrics_label: connected_addr.get_transient_addr_label(),
                 last_metrics_state: None,
+                peer_data: connected_addr,
             };
 
             let connection_task = tokio::spawn(

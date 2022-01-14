@@ -51,6 +51,7 @@ async fn connection_run_loop_ok() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -112,6 +113,7 @@ async fn connection_run_loop_future_drop() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -162,6 +164,7 @@ async fn connection_run_loop_client_close() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -219,6 +222,7 @@ async fn connection_run_loop_client_drop() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -275,6 +279,7 @@ async fn connection_run_loop_inbound_close() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -332,6 +337,7 @@ async fn connection_run_loop_inbound_drop() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
@@ -393,6 +399,7 @@ async fn connection_run_loop_failed() {
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,
+        peer_data: super::super::super::ConnectedAddr::Isolated,
     };
 
     let connection = connection.run(peer_inbound_rx);
