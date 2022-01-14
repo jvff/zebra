@@ -226,7 +226,8 @@ where
     downloads: Pin<
         Box<
             Downloads<
-                Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>, AlwaysHedge>,
+                // Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>, AlwaysHedge>,
+                ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>,
                 Timeout<ZV>,
                 ZSTip,
             >,
@@ -300,17 +301,22 @@ where
         //
         // XXX add ServiceBuilder::hedge() so this becomes
         // ServiceBuilder::new().hedge(...).retry(...)...
-        let block_network = Hedge::new(
-            ServiceBuilder::new()
-                .concurrency_limit(config.sync.max_concurrent_block_requests)
-                .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
-                .timeout(BLOCK_DOWNLOAD_TIMEOUT)
-                .service(peers),
-            AlwaysHedge,
-            20,
-            0.95,
-            2 * SYNC_RESTART_DELAY,
-        );
+        // let block_network = Hedge::new(
+        // ServiceBuilder::new()
+        // .concurrency_limit(config.sync.max_concurrent_block_requests)
+        // .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
+        // .timeout(BLOCK_DOWNLOAD_TIMEOUT)
+        // .service(peers),
+        // AlwaysHedge,
+        // 20,
+        // 0.95,
+        // 2 * SYNC_RESTART_DELAY,
+        // );
+        let block_network = ServiceBuilder::new()
+            .concurrency_limit(config.sync.max_concurrent_block_requests)
+            .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
+            .timeout(BLOCK_DOWNLOAD_TIMEOUT)
+            .service(peers);
 
         // We apply a timeout to the verifier to avoid hangs due to missing earlier blocks.
         let verifier = Timeout::new(verifier, BLOCK_VERIFY_TIMEOUT);
