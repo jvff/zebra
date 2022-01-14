@@ -242,8 +242,9 @@ where
             .call(zn::Request::BlocksByHash(std::iter::once(hash).collect()));
         tracing::debug!("requested block");
 
-        let dl_counter = AliveHandle::new(self.dl_counter.clone());
+        let dl_counter = self.dl_counter.clone();
         let vf_counter = self.vf_counter.clone();
+        let dl_handle = AliveHandle::new(dl_counter.clone());
 
         // This oneshot is used to signal cancellation to the download task.
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
@@ -280,8 +281,19 @@ where
                     unreachable!("wrong response to block request");
                 };
                 metrics::counter!("sync.downloaded.block.count", 1);
-                std::mem::drop(dl_counter);
-                let _vf_counter = AliveHandle::new(vf_counter);
+                std::mem::drop(dl_handle);
+                let _vf_handle = AliveHandle::new(vf_counter.clone());
+
+                let dl_count = dl_counter.load(std::sync::atomic::Ordering::Acquire);
+                let vf_count = vf_counter.load(std::sync::atomic::Ordering::Acquire);
+                let total = dl_count + vf_count;
+                let vf_pct = vf_count as f64 * 100.0 / total as f64;
+                tracing::debug!(
+                    "JANITO Alive requests = (dl: {}, vf: {}) -> {:.2} % are verifications",
+                    dl_count,
+                    vf_count,
+                    vf_pct,
+                );
 
                 // Security & Performance: reject blocks that are too far ahead of our tip.
                 // Avoids denial of service attacks, and reduces wasted work on high blocks
@@ -392,17 +404,6 @@ where
             // Tack the hash onto the error so we can remove the cancel handle
             // on failure as well as on success.
             .map_err(move |e| (e, hash)),
-        );
-
-        let dl_count = self.dl_counter.load(std::sync::atomic::Ordering::Acquire);
-        let vf_count = self.vf_counter.load(std::sync::atomic::Ordering::Acquire);
-        let total = dl_count + vf_count;
-        let vf_pct = vf_count as f64 * 100.0 / total as f64;
-        tracing::debug!(
-            "JANITO Alive requests = (dl: {}, vf: {}) -> {:.2} % are verifications",
-            dl_count,
-            vf_count,
-            vf_pct,
         );
 
         self.pending.push(task);
