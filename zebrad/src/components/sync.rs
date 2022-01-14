@@ -113,7 +113,7 @@ pub const TIPS_RESPONSE_TIMEOUT: Duration = Duration::from_secs(6);
 ///
 /// If this timeout is set too low, the syncer will sometimes get stuck in a
 /// failure loop.
-pub(super) const BLOCK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(20);
+pub(super) const BLOCK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Controls how long we wait for a block verify request to complete.
 ///
