@@ -290,11 +290,15 @@ impl Handler {
                         // TODO: is it really an error if we ask for a block hash, but the peer
                         // doesn't know it? Should we close the connection on that kind of error?
                         // Should we fake a NotFound response here? (#1515)
-                        let items = pending_hashes
-                            .iter()
-                            .map(|h| InventoryHash::Block(*h))
-                            .collect();
-                        Handler::Finished(Err(PeerError::NotFound(items)))
+                        // let items = pending_hashes
+                        // .iter()
+                        // .map(|h| InventoryHash::Block(*h))
+                        // .collect();
+                        // Handler::Finished(Err(PeerError::NotFound(items)))
+                        Handler::BlocksByHash {
+                            pending_hashes,
+                            blocks,
+                        }
                     }
                 }
             }
