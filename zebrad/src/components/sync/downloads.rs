@@ -131,6 +131,9 @@ where
     /// A list of channels that can be used to cancel pending block download and
     /// verify tasks.
     cancel_handles: HashMap<block::Hash, oneshot::Sender<()>>,
+
+    dl_counter: Arc<std::sync::atomic::AtomicUsize>,
+    vf_counter: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl<ZN, ZV, ZSTip> Stream for Downloads<ZN, ZV, ZSTip>
@@ -206,6 +209,8 @@ where
             lookahead_limit,
             pending: FuturesUnordered::new(),
             cancel_handles: HashMap::new(),
+            dl_counter: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            vf_counter: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
         }
     }
 
@@ -236,6 +241,9 @@ where
             .map_err(|e| eyre!(e))?
             .call(zn::Request::BlocksByHash(std::iter::once(hash).collect()));
         tracing::debug!("requested block");
+
+        let dl_counter = AliveHandle::new(self.dl_counter.clone());
+        let vf_counter = self.vf_counter.clone();
 
         // This oneshot is used to signal cancellation to the download task.
         let (cancel_tx, mut cancel_rx) = oneshot::channel::<()>();
@@ -272,6 +280,8 @@ where
                     unreachable!("wrong response to block request");
                 };
                 metrics::counter!("sync.downloaded.block.count", 1);
+                std::mem::drop(dl_counter);
+                let _vf_counter = AliveHandle::new(vf_counter);
 
                 // Security & Performance: reject blocks that are too far ahead of our tip.
                 // Avoids denial of service attacks, and reduces wasted work on high blocks
@@ -384,6 +394,17 @@ where
             .map_err(move |e| (e, hash)),
         );
 
+        let dl_count = self.dl_counter.load(std::sync::atomic::Ordering::Acquire);
+        let vf_count = self.vf_counter.load(std::sync::atomic::Ordering::Acquire);
+        let total = dl_count + vf_count;
+        let vf_pct = vf_count as f64 * 100.0 / total as f64;
+        tracing::debug!(
+            "JANITO Alive requests = (dl: {}, vf: {}) -> {:.2} % are verifications",
+            dl_count,
+            vf_count,
+            vf_pct,
+        );
+
         self.pending.push(task);
         assert!(
             self.cancel_handles.insert(hash, cancel_tx).is_none(),
@@ -410,5 +431,24 @@ where
     /// Get the number of currently in-flight download tasks.
     pub fn in_flight(&mut self) -> usize {
         self.pending.len()
+    }
+}
+
+pub struct AliveHandle {
+    counter: Arc<std::sync::atomic::AtomicUsize>,
+}
+
+impl AliveHandle {
+    fn new(counter: Arc<std::sync::atomic::AtomicUsize>) -> Self {
+        counter.fetch_add(1, std::sync::atomic::Ordering::AcqRel);
+
+        AliveHandle { counter }
+    }
+}
+
+impl Drop for AliveHandle {
+    fn drop(&mut self) {
+        self.counter
+            .fetch_sub(1, std::sync::atomic::Ordering::AcqRel);
     }
 }
