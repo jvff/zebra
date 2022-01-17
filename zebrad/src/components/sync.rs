@@ -9,8 +9,8 @@ use futures::stream::{FuturesUnordered, StreamExt};
 use indexmap::IndexSet;
 use tokio::time::sleep;
 use tower::{
-    builder::ServiceBuilder, hedge::Hedge, limit::ConcurrencyLimit, retry::Retry, timeout::Timeout,
-    Service, ServiceExt,
+    buffer::Buffer, builder::ServiceBuilder, hedge::Hedge, limit::ConcurrencyLimit, retry::Retry,
+    timeout::Timeout, Service, ServiceExt,
 };
 
 use zebra_chain::{
@@ -226,7 +226,13 @@ where
     downloads: Pin<
         Box<
             Downloads<
-                Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>, AlwaysHedge>,
+                Hedge<
+                    Buffer<
+                        Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>, AlwaysHedge>,
+                        zn::Request,
+                    >,
+                    AlwaysHedge,
+                >,
                 Timeout<ZV>,
                 ZSTip,
             >,
@@ -301,14 +307,23 @@ where
         // XXX add ServiceBuilder::hedge() so this becomes
         // ServiceBuilder::new().hedge(...).retry(...)...
         let block_network = Hedge::new(
-            ServiceBuilder::new()
-                .concurrency_limit(config.sync.max_concurrent_block_requests)
-                .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
-                .timeout(BLOCK_DOWNLOAD_TIMEOUT)
-                .service(peers),
+            Buffer::new(
+                Hedge::new(
+                    ServiceBuilder::new()
+                        .concurrency_limit(config.sync.max_concurrent_block_requests)
+                        .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
+                        .timeout(BLOCK_DOWNLOAD_TIMEOUT)
+                        .service(peers),
+                    AlwaysHedge,
+                    20,
+                    0.95,
+                    2 * SYNC_RESTART_DELAY,
+                ),
+                2,
+            ),
             AlwaysHedge,
-            20,
-            0.95,
+            40,
+            0.975,
             2 * SYNC_RESTART_DELAY,
         );
 
