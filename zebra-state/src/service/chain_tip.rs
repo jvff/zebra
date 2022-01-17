@@ -250,23 +250,13 @@ impl LatestChainTip {
 
 impl ChainTip for LatestChainTip {
     /// Return the height of the best chain tip.
-    #[instrument(
-        skip(self),
-        fields(
-            height = ?self.receiver.borrow().as_ref().map(|block| block.height),
-            hash = ?self.receiver.borrow().as_ref().map(|block| block.hash),
-        ))]
+    #[instrument(skip(self))]
     fn best_tip_height(&self) -> Option<block::Height> {
         self.receiver.borrow().as_ref().map(|block| block.height)
     }
 
     /// Return the block hash of the best chain tip.
-    #[instrument(
-        skip(self),
-        fields(
-            height = ?self.receiver.borrow().as_ref().map(|block| block.height),
-            hash = ?self.receiver.borrow().as_ref().map(|block| block.hash),
-        ))]
+    #[instrument(skip(self))]
     fn best_tip_hash(&self) -> Option<block::Hash> {
         self.receiver.borrow().as_ref().map(|block| block.hash)
     }
@@ -275,13 +265,7 @@ impl ChainTip for LatestChainTip {
     ///
     /// All transactions with these mined IDs should be rejected from the mempool,
     /// even if their authorizing data is different.
-    #[instrument(
-        skip(self),
-        fields(
-            height = ?self.receiver.borrow().as_ref().map(|block| block.height),
-            hash = ?self.receiver.borrow().as_ref().map(|block| block.hash),
-            transaction_count = ?self.receiver.borrow().as_ref().map(|block| block.transaction_hashes.len()),
-        ))]
+    #[instrument(skip(self))]
     fn best_tip_mined_transaction_ids(&self) -> Arc<[transaction::Hash]> {
         self.receiver
             .borrow()
