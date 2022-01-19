@@ -4,10 +4,9 @@
 //! - connection tests when awaiting requests (#3232)
 //! - connection tests with closed/dropped peer_outbound_tx (#3233)
 
-use futures::{channel::mpsc, FutureExt, StreamExt};
-use tokio::io::DuplexStream;
-use tokio_util::codec::{FramedRead, FramedWrite};
+use futures::{channel::mpsc, sink::SinkMapErr, FutureExt, StreamExt};
 
+use zebra_chain::serialization::SerializationError;
 use zebra_test::mock_service::{MockService, PanicAssertion};
 
 use crate::{
@@ -15,7 +14,7 @@ use crate::{
         connection::{Connection, State},
         ClientRequest, ErrorSlot,
     },
-    protocol::external::Codec,
+    protocol::external::Message,
     PeerError, Request, Response,
 };
 
@@ -276,10 +275,13 @@ async fn connection_run_loop_failed() {
 
 /// Creates a new [`Connection`] instance for unit tests.
 fn new_test_connection() -> (
-    Connection<MockService<Request, Response, PanicAssertion>, FramedWrite<DuplexStream, Codec>>,
+    Connection<
+        MockService<Request, Response, PanicAssertion>,
+        SinkMapErr<mpsc::UnboundedSender<Message>, fn(mpsc::SendError) -> SerializationError>,
+    >,
     mpsc::Sender<ClientRequest>,
     MockService<Request, Response, PanicAssertion>,
-    FramedRead<DuplexStream, Codec>,
+    mpsc::UnboundedReceiver<Message>,
     ErrorSlot,
 ) {
     super::new_test_connection()

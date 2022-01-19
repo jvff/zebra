@@ -1,10 +1,10 @@
 //! Tests for peer connections
 
-use futures::channel::mpsc;
-use tokio::io::{duplex, DuplexStream};
-use tokio_util::codec::{FramedRead, FramedWrite};
+use std::io;
 
-use zebra_chain::parameters::Network;
+use futures::{channel::mpsc, sink::SinkMapErr, SinkExt};
+
+use zebra_chain::serialization::SerializationError;
 use zebra_test::mock_service::MockService;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
         client::ClientRequestReceiver, connection::State, ClientRequest, Connection, ErrorSlot,
     },
     peer_set::ActiveConnectionCounter,
-    protocol::external::Codec,
+    protocol::external::Message,
     Request, Response,
 };
 
@@ -21,25 +21,28 @@ mod vectors;
 
 /// Creates a new [`Connection`] instance for testing.
 fn new_test_connection<A>() -> (
-    Connection<MockService<Request, Response, A>, FramedWrite<DuplexStream, Codec>>,
+    Connection<
+        MockService<Request, Response, A>,
+        SinkMapErr<mpsc::UnboundedSender<Message>, fn(mpsc::SendError) -> SerializationError>,
+    >,
     mpsc::Sender<ClientRequest>,
     MockService<Request, Response, A>,
-    FramedRead<DuplexStream, Codec>,
+    mpsc::UnboundedReceiver<Message>,
     ErrorSlot,
 ) {
-    let (client_tx, client_rx) = mpsc::channel(1);
-    let (peer_outbound_writer, peer_outbound_reader) = duplex(4096);
-
-    let codec = Codec::builder()
-        .for_network(Network::Mainnet)
-        .with_metrics_addr_label("test".into())
-        .finish();
-    let peer_outbound_tx = FramedWrite::new(peer_outbound_writer, codec.clone());
-    let peer_outbound_rx = FramedRead::new(peer_outbound_reader, codec);
-
     let mock_inbound_service = MockService::build().finish();
-
+    let (client_tx, client_rx) = mpsc::channel(1);
     let shared_error_slot = ErrorSlot::default();
+    let (peer_outbound_tx, peer_outbound_rx) = mpsc::unbounded();
+
+    let error_converter: fn(mpsc::SendError) -> SerializationError = |_| {
+        io::Error::new(
+            io::ErrorKind::BrokenPipe,
+            "peer outbound message stream was closed",
+        )
+        .into()
+    };
+    let peer_tx = peer_outbound_tx.sink_map_err(error_converter);
 
     let connection = Connection {
         state: State::AwaitingRequest,
@@ -48,7 +51,7 @@ fn new_test_connection<A>() -> (
         svc: mock_inbound_service.clone(),
         client_rx: ClientRequestReceiver::from(client_rx),
         error_slot: shared_error_slot.clone(),
-        peer_tx: peer_outbound_tx,
+        peer_tx,
         connection_tracker: ActiveConnectionCounter::new_counter().track_connection(),
         metrics_label: "test".to_string(),
         last_metrics_state: None,

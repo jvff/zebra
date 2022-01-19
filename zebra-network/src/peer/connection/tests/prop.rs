@@ -2,19 +2,21 @@ use std::{collections::HashSet, env, mem, sync::Arc};
 
 use futures::{
     channel::{mpsc, oneshot},
+    sink::SinkMapErr,
     SinkExt, StreamExt,
 };
 use proptest::prelude::*;
-use tokio::io::DuplexStream;
-use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::Span;
 
-use zebra_chain::block::{self, Block};
+use zebra_chain::{
+    block::{self, Block},
+    serialization::SerializationError,
+};
 use zebra_test::mock_service::{MockService, PropTestAssertion};
 
 use crate::{
     peer::{connection::Connection, ClientRequest, ErrorSlot},
-    protocol::external::{Codec, Message},
+    protocol::external::Message,
     Request, Response, SharedPeerError,
 };
 
@@ -110,10 +112,13 @@ proptest! {
 
 /// Creates a new [`Connection`] instance for property tests.
 fn new_test_connection() -> (
-    Connection<MockService<Request, Response, PropTestAssertion>, FramedWrite<DuplexStream, Codec>>,
+    Connection<
+        MockService<Request, Response, PropTestAssertion>,
+        SinkMapErr<mpsc::UnboundedSender<Message>, fn(mpsc::SendError) -> SerializationError>,
+    >,
     mpsc::Sender<ClientRequest>,
     MockService<Request, Response, PropTestAssertion>,
-    FramedRead<DuplexStream, Codec>,
+    mpsc::UnboundedReceiver<Message>,
     ErrorSlot,
 ) {
     super::new_test_connection()
@@ -122,7 +127,7 @@ fn new_test_connection() -> (
 async fn send_block_request(
     block: block::Hash,
     client_requests: &mut mpsc::Sender<ClientRequest>,
-    outbound_messages: &mut FramedRead<DuplexStream, Codec>,
+    outbound_messages: &mut mpsc::UnboundedReceiver<Message>,
 ) -> oneshot::Receiver<Result<Response, SharedPeerError>> {
     let (response_sender, response_receiver) = oneshot::channel();
 
@@ -141,8 +146,7 @@ async fn send_block_request(
     let request_message = outbound_messages
         .next()
         .await
-        .expect("First block request message not sent")
-        .expect("Failed to send first block request message");
+        .expect("First block request message not sent");
 
     assert_eq!(request_message, Message::GetData(vec![block.into()]));
 
