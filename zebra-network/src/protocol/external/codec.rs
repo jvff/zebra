@@ -35,12 +35,14 @@ use super::{
 const HEADER_LEN: usize = 24usize;
 
 /// A codec which produces Bitcoin messages from byte streams and vice versa.
+#[derive(Clone)]
 pub struct Codec {
     builder: Builder,
     state: DecodeState,
 }
 
 /// A builder for specifying [`Codec`] options.
+#[derive(Clone)]
 pub struct Builder {
     /// The network magic to use in encoding.
     network: Network,
@@ -295,6 +297,7 @@ impl Codec {
 
 // ======== Decoding =========
 
+#[derive(Clone)]
 enum DecodeState {
     Head,
     Body {
