@@ -5,6 +5,7 @@
 //! - connection tests with closed/dropped peer_outbound_tx (#3233)
 
 use futures::{channel::mpsc, FutureExt};
+use tokio::io::{duplex, AsyncRead, AsyncReadExt, DuplexStream};
 use tokio_util::codec::FramedWrite;
 
 use zebra_chain::parameters::Network;
@@ -27,10 +28,8 @@ async fn connection_run_loop_ok() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (connection, client_tx, mut inbound_service, mut peer_outbound_reader, shared_error_slot) =
+        new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -55,7 +54,7 @@ async fn connection_run_loop_ok() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -68,10 +67,8 @@ async fn connection_run_loop_future_drop() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (connection, client_tx, mut inbound_service, mut peer_outbound_reader, shared_error_slot) =
+        new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -85,7 +82,7 @@ async fn connection_run_loop_future_drop() {
     assert!(client_tx.is_closed());
     assert!(peer_inbound_tx.is_closed());
 
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -98,10 +95,13 @@ async fn connection_run_loop_client_close() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, mut client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (
+        connection,
+        mut client_tx,
+        mut inbound_service,
+        mut peer_outbound_reader,
+        shared_error_slot,
+    ) = new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -122,7 +122,7 @@ async fn connection_run_loop_client_close() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -135,10 +135,8 @@ async fn connection_run_loop_client_drop() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (connection, client_tx, mut inbound_service, mut peer_outbound_reader, shared_error_slot) =
+        new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -158,7 +156,7 @@ async fn connection_run_loop_client_drop() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -171,10 +169,8 @@ async fn connection_run_loop_inbound_close() {
     // but that doesn't change how the state machine behaves.
     let (mut peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (connection, client_tx, mut inbound_service, mut peer_outbound_reader, shared_error_slot) =
+        new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -195,7 +191,7 @@ async fn connection_run_loop_inbound_close() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -208,10 +204,8 @@ async fn connection_run_loop_inbound_drop() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (connection, client_tx, mut inbound_service, mut peer_outbound_reader, shared_error_slot) =
+        new_test_connection();
 
     let connection = connection.run(peer_inbound_rx);
 
@@ -231,7 +225,7 @@ async fn connection_run_loop_inbound_drop() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
@@ -244,10 +238,13 @@ async fn connection_run_loop_failed() {
     // but that doesn't change how the state machine behaves.
     let (peer_inbound_tx, peer_inbound_rx) = mpsc::channel(1);
 
-    let mut peer_outbound_bytes = Vec::<u8>::new();
-
-    let (mut connection, client_tx, mut inbound_service, shared_error_slot) =
-        new_test_connection(&mut peer_outbound_bytes);
+    let (
+        mut connection,
+        client_tx,
+        mut inbound_service,
+        mut peer_outbound_reader,
+        shared_error_slot,
+    ) = new_test_connection();
 
     // Simulate an internal connection error.
     connection.state = State::Failed;
@@ -273,24 +270,24 @@ async fn connection_run_loop_failed() {
 
     // We need to drop the future, because it holds a mutable reference to the bytes.
     std::mem::drop(connection_guard);
-    assert_eq!(peer_outbound_bytes, Vec::<u8>::new());
+    assert!(peer_outbound_reader.has_finished());
 
     inbound_service.expect_no_requests().await;
 }
 
 /// Creates a new [`Connection`] instance for testing.
-fn new_test_connection(
-    peer_outbound_bytes: &mut Vec<u8>,
-) -> (
-    Connection<MockService<Request, Response, PanicAssertion>, FramedWrite<&mut Vec<u8>, Codec>>,
+fn new_test_connection() -> (
+    Connection<MockService<Request, Response, PanicAssertion>, FramedWrite<DuplexStream, Codec>>,
     mpsc::Sender<ClientRequest>,
     MockService<Request, Response, PanicAssertion>,
+    DuplexStream,
     ErrorSlot,
 ) {
     let (client_tx, client_rx) = mpsc::channel(1);
+    let (peer_outbound_writer, peer_outbound_reader) = duplex(4096);
 
     let peer_outbound_tx = FramedWrite::new(
-        peer_outbound_bytes,
+        peer_outbound_writer,
         Codec::builder()
             .for_network(Network::Mainnet)
             .with_metrics_addr_label("test".into())
@@ -318,6 +315,33 @@ fn new_test_connection(
         connection,
         client_tx,
         mock_inbound_service,
+        peer_outbound_reader,
         shared_error_slot,
     )
+}
+
+/// An extension trait for [`AsyncRead`] types that adds a `has_finished` method.
+trait HasFinished {
+    /// Checks if there are no more bytes that can be read.
+    ///
+    /// Returns `true` if the [`AsyncRead`] type has indicated it can no longer produce more bytes,
+    /// effectively saying that it has reached the end of the stream.
+    ///
+    /// Note that even though an [`AsyncRead`] type can be incapable of producing more bytes at a
+    /// given moment, depending on the implementation it may be able to produce more bytes at a
+    /// later moment.
+    fn has_finished(&mut self) -> bool;
+}
+
+impl<R> HasFinished for R
+where
+    R: AsyncRead + Unpin,
+{
+    fn has_finished(&mut self) -> bool {
+        let mut single_byte_buffer = [0u8];
+
+        let read_result = self.read(&mut single_byte_buffer).now_or_never();
+
+        matches!(read_result, Some(Ok(0)))
+    }
 }
