@@ -3,7 +3,6 @@ use std::{
     collections::HashSet,
     fmt,
     future::Future,
-    marker::PhantomData,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     pin::Pin,
     sync::Arc,
@@ -54,12 +53,11 @@ use crate::{
 /// To avoid hangs, each handshake (or its connector) should be:
 /// - launched in a separate task, and
 /// - wrapped in a timeout.
-pub struct Handshake<S, AsyncReadWrite, C = NoChainTip>
+pub struct Handshake<S, C = NoChainTip>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
     C: ChainTip + Clone + Send + 'static,
-    AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     config: Config,
     user_agent: String,
@@ -73,16 +71,13 @@ where
     nonces: Arc<futures::lock::Mutex<HashSet<Nonce>>>,
 
     parent_span: Span,
-
-    _phantom_data: PhantomData<AsyncReadWrite>,
 }
 
-impl<S, AsyncReadWrite, C> Clone for Handshake<S, AsyncReadWrite, C>
+impl<S, C> Clone for Handshake<S, C>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
     C: ChainTip + Clone + Send + 'static,
-    AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     fn clone(&self) -> Self {
         Self {
@@ -96,7 +91,6 @@ where
             minimum_peer_version: self.minimum_peer_version.clone(),
             nonces: self.nonces.clone(),
             parent_span: self.parent_span.clone(),
-            _phantom_data: self._phantom_data,
         }
     }
 }
@@ -340,12 +334,11 @@ impl fmt::Debug for ConnectedAddr {
 }
 
 /// A builder for `Handshake`.
-pub struct Builder<S, AsyncReadWrite, C = NoChainTip>
+pub struct Builder<S, C = NoChainTip>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
     C: ChainTip + Clone + Send + 'static,
-    AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     config: Option<Config>,
     our_services: Option<PeerServices>,
@@ -356,16 +349,13 @@ where
     address_book_updater: Option<tokio::sync::mpsc::Sender<MetaAddrChange>>,
     inv_collector: Option<broadcast::Sender<(InventoryHash, SocketAddr)>>,
     latest_chain_tip: C,
-
-    _phantom_data: PhantomData<AsyncReadWrite>,
 }
 
-impl<S, AsyncReadWrite, C> Builder<S, AsyncReadWrite, C>
+impl<S, C> Builder<S, C>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
     C: ChainTip + Clone + Send + 'static,
-    AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     /// Provide a config.  Mandatory.
     pub fn with_config(mut self, config: Config) -> Self {
@@ -425,10 +415,7 @@ where
     /// constant over network upgrade activations.
     ///
     /// Use [`NoChainTip`] to explicitly provide no chain tip.
-    pub fn with_latest_chain_tip<NewC>(
-        self,
-        latest_chain_tip: NewC,
-    ) -> Builder<S, AsyncReadWrite, NewC>
+    pub fn with_latest_chain_tip<NewC>(self, latest_chain_tip: NewC) -> Builder<S, NewC>
     where
         NewC: ChainTip + Clone + Send + 'static,
     {
@@ -443,7 +430,6 @@ where
             user_agent: self.user_agent,
             relay: self.relay,
             inv_collector: self.inv_collector,
-            _phantom_data: self._phantom_data,
         }
     }
 
@@ -458,7 +444,7 @@ where
     /// Consume this builder and produce a [`Handshake`].
     ///
     /// Returns an error only if any mandatory field was unset.
-    pub fn finish(self) -> Result<Handshake<S, AsyncReadWrite, C>, &'static str> {
+    pub fn finish(self) -> Result<Handshake<S, C>, &'static str> {
         let config = self.config.ok_or("did not specify config")?;
         let inbound_service = self
             .inbound_service
@@ -491,19 +477,17 @@ where
             minimum_peer_version,
             nonces,
             parent_span: Span::current(),
-            _phantom_data: self._phantom_data,
         })
     }
 }
 
-impl<S, AsyncReadWrite> Handshake<S, AsyncReadWrite, NoChainTip>
+impl<S> Handshake<S, NoChainTip>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
-    AsyncReadWrite: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     /// Create a builder that configures a [`Handshake`] service.
-    pub fn builder() -> Builder<S, AsyncReadWrite, NoChainTip> {
+    pub fn builder() -> Builder<S, NoChainTip> {
         // We don't derive `Default` because the derive inserts a `where S:
         // Default` bound even though `Option<S>` implements `Default` even if
         // `S` does not.
@@ -516,7 +500,6 @@ where
             address_book_updater: None,
             inv_collector: None,
             latest_chain_tip: NoChainTip,
-            _phantom_data: PhantomData::default(),
         }
     }
 }
@@ -745,8 +728,7 @@ where
     pub connection_tracker: ConnectionTracker,
 }
 
-impl<S, AsyncReadWrite, C> Service<HandshakeRequest<AsyncReadWrite>>
-    for Handshake<S, AsyncReadWrite, C>
+impl<S, AsyncReadWrite, C> Service<HandshakeRequest<AsyncReadWrite>> for Handshake<S, C>
 where
     S: Service<Request, Response = Response, Error = BoxError> + Clone + Send + 'static,
     S::Future: Send,
