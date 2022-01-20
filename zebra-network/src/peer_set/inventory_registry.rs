@@ -134,6 +134,15 @@ impl<T: Clone> InventoryStatus<T> {
     }
 }
 
+impl InventoryChange {
+    pub fn into_parts(self) -> (AtLeastOne<InventoryHash>, SocketAddr, InventoryMarker) {
+        match self {
+            Advertised((items, address)) => (items, address, Advertised(())),
+            Missing((items, address)) => (items, address, Missing(())),
+        }
+    }
+}
+
 impl InventoryRegistry {
     /// Returns a new Inventory Registry for `inv_stream`.
     pub fn new(inv_stream: broadcast::Receiver<InventoryChange>) -> Self {
@@ -217,8 +226,7 @@ impl InventoryRegistry {
 
     /// Record the given inventory `change` for the peer `addr`.
     fn register(&mut self, change: InventoryChange) {
-        let status = change.as_ref().map(|_| ());
-        let (invs, addr) = change.inner();
+        let (invs, addr, status) = change.into_parts();
 
         for inv in invs {
             self.current.entry(inv).or_default().insert(addr, status);
