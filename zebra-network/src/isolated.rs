@@ -63,7 +63,7 @@ where
     let handshake = peer::Handshake::builder()
         .with_config(config)
         .with_inbound_service(tower::service_fn(|_req| async move {
-            Ok::<Response, BoxError>(Response::Nil)
+            Ok::<_, BoxError>(Response::Nil)
         }))
         .with_user_agent(user_agent)
         .with_latest_chain_tip(NoChainTip)
