@@ -30,11 +30,8 @@ use zebra_network::{
     AddressBook,
 };
 
-// Re-use the syncer timeouts for consistency.
-use super::{
-    mempool, mempool as mp,
-    sync::{BLOCK_DOWNLOAD_TIMEOUT, BLOCK_VERIFY_TIMEOUT},
-};
+// Re-use the syncer timeout for consistency.
+use super::{mempool, mempool as mp, sync::BLOCK_VERIFY_TIMEOUT};
 
 mod downloads;
 #[cfg(test)]
@@ -47,8 +44,7 @@ type BlockDownloadPeerSet =
 type State = Buffer<BoxService<zs::Request, zs::Response, zs::BoxError>, zs::Request>;
 type Mempool = Buffer<BoxService<mp::Request, mp::Response, mp::BoxError>, mp::Request>;
 type BlockVerifier = Buffer<BoxService<Arc<Block>, block::Hash, VerifyChainError>, Arc<Block>>;
-type GossipedBlockDownloads =
-    BlockDownloads<Timeout<BlockDownloadPeerSet>, Timeout<BlockVerifier>, State>;
+type GossipedBlockDownloads = BlockDownloads<BlockDownloadPeerSet, Timeout<BlockVerifier>, State>;
 
 /// The services used by the [`Inbound`] service.
 pub struct InboundSetupData {
@@ -206,7 +202,7 @@ impl Service<zn::Request> for Inbound {
                     } = setup_data;
 
                     let block_downloads = Box::pin(BlockDownloads::new(
-                        Timeout::new(block_download_peer_set.clone(), BLOCK_DOWNLOAD_TIMEOUT),
+                        block_download_peer_set.clone(),
                         Timeout::new(block_verifier, BLOCK_VERIFY_TIMEOUT),
                         state.clone(),
                         latest_chain_tip,

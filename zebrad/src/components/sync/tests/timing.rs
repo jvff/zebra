@@ -10,7 +10,9 @@ use futures::future;
 use tokio::time::{timeout, Duration};
 
 use zebra_chain::parameters::{Network, POST_BLOSSOM_POW_TARGET_SPACING};
-use zebra_network::constants::{DEFAULT_CRAWL_NEW_PEER_INTERVAL, HANDSHAKE_TIMEOUT};
+use zebra_network::constants::{
+    DEFAULT_CRAWL_NEW_PEER_INTERVAL, HANDSHAKE_TIMEOUT, REQUEST_TIMEOUT,
+};
 
 use super::super::*;
 use crate::config::ZebradConfig;
@@ -22,15 +24,15 @@ fn ensure_timeouts_consistent() {
 
     // This constraint clears the download pipeline during a restart
     assert!(
-        SYNC_RESTART_DELAY.as_secs() > 2 * BLOCK_DOWNLOAD_TIMEOUT.as_secs(),
+        SYNC_RESTART_DELAY.as_secs() > 2 * REQUEST_TIMEOUT.as_secs(),
         "Sync restart should allow for pending and buffered requests to complete"
     );
 
     // This constraint avoids spurious failures due to block retries timing out.
-    // We multiply by 2, because the Hedge can wait up to BLOCK_DOWNLOAD_TIMEOUT
+    // We multiply by 2, because the Hedge can wait up to REQUEST_TIMEOUT
     // seconds before retrying.
     const BLOCK_DOWNLOAD_HEDGE_TIMEOUT: u64 =
-        2 * BLOCK_DOWNLOAD_RETRY_LIMIT as u64 * BLOCK_DOWNLOAD_TIMEOUT.as_secs();
+        2 * BLOCK_DOWNLOAD_RETRY_LIMIT as u64 * REQUEST_TIMEOUT.as_secs();
     assert!(
         SYNC_RESTART_DELAY.as_secs() > BLOCK_DOWNLOAD_HEDGE_TIMEOUT,
         "Sync restart should allow for block downloads to time out on every retry"
@@ -41,7 +43,7 @@ fn ensure_timeouts_consistent() {
         BLOCK_VERIFY_TIMEOUT.as_secs()
             > SYNC_RESTART_DELAY.as_secs()
                 + BLOCK_DOWNLOAD_HEDGE_TIMEOUT
-                + BLOCK_DOWNLOAD_TIMEOUT.as_secs(),
+                + REQUEST_TIMEOUT.as_secs(),
         "Block verify should allow for a block timeout, a sync restart, and some block fetches"
     );
 
@@ -66,7 +68,7 @@ fn ensure_timeouts_consistent() {
     // This constraint makes genesis retries more likely to succeed
     assert!(
         GENESIS_TIMEOUT_RETRY.as_secs() > HANDSHAKE_TIMEOUT.as_secs()
-            && GENESIS_TIMEOUT_RETRY.as_secs() < BLOCK_DOWNLOAD_TIMEOUT.as_secs(),
+            && GENESIS_TIMEOUT_RETRY.as_secs() < REQUEST_TIMEOUT.as_secs(),
         "Genesis retries should wait for new peers, but they shouldn't wait too long"
     );
 

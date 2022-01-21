@@ -100,21 +100,6 @@ pub const MAX_TIPS_RESPONSE_HASH_COUNT: usize = 500;
 /// failure loop.
 pub const TIPS_RESPONSE_TIMEOUT: Duration = Duration::from_secs(6);
 
-/// Controls how long we wait for a block download request to complete.
-///
-/// This timeout makes sure that the syncer doesn't hang when:
-///   - the lookahead queue is full, and
-///   - we are waiting for a request that is stuck.
-/// See [`BLOCK_VERIFY_TIMEOUT`] for details.
-///
-/// ## Correctness
-///
-/// If this timeout is removed (or set too high), the syncer will sometimes hang.
-///
-/// If this timeout is set too low, the syncer will sometimes get stuck in a
-/// failure loop.
-pub(super) const BLOCK_DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15);
-
 /// Controls how long we wait for a block verify request to complete.
 ///
 /// This timeout makes sure that the syncer doesn't hang when:
@@ -226,7 +211,7 @@ where
     downloads: Pin<
         Box<
             Downloads<
-                Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, Timeout<ZN>>>, AlwaysHedge>,
+                Hedge<ConcurrencyLimit<Retry<zn::RetryLimit, ZN>>, AlwaysHedge>,
                 Timeout<ZV>,
                 ZSTip,
             >,
@@ -304,7 +289,6 @@ where
             ServiceBuilder::new()
                 .concurrency_limit(config.sync.max_concurrent_block_requests)
                 .retry(zn::RetryLimit::new(BLOCK_DOWNLOAD_RETRY_LIMIT))
-                .timeout(BLOCK_DOWNLOAD_TIMEOUT)
                 .service(peers),
             AlwaysHedge,
             20,

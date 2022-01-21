@@ -44,7 +44,7 @@ use zebra_consensus::transaction as tx;
 use zebra_network as zn;
 use zebra_state as zs;
 
-use crate::components::sync::{BLOCK_DOWNLOAD_TIMEOUT, BLOCK_VERIFY_TIMEOUT};
+use crate::components::sync::BLOCK_VERIFY_TIMEOUT;
 
 use super::MempoolError;
 
@@ -55,7 +55,7 @@ type BoxError = Box<dyn std::error::Error + Send + Sync + 'static>;
 /// This is currently equal to [`crate::components::sync::BLOCK_DOWNLOAD_TIMEOUT`] for
 /// consistency, even though parts of the rationale used for defining the value
 /// don't apply here (e.g. we can drop transactions hashes when the queue is full).
-pub(crate) const TRANSACTION_DOWNLOAD_TIMEOUT: Duration = BLOCK_DOWNLOAD_TIMEOUT;
+pub(crate) const TRANSACTION_DOWNLOAD_TIMEOUT: Duration = zn::constants::REQUEST_TIMEOUT;
 
 /// Controls how long we wait for a transaction verify request to complete.
 ///
