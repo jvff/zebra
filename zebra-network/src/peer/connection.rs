@@ -12,6 +12,7 @@ use std::{borrow::Cow, collections::HashSet, fmt, pin::Pin, sync::Arc};
 use futures::{
     future::{self, Either},
     prelude::*,
+    select,
     stream::Stream,
 };
 use tokio::time::{sleep, Sleep};
@@ -541,46 +542,40 @@ where
                     trace!("awaiting client request or peer message");
                     // CORRECTNESS
                     //
-                    // Currently, select prefers the first future if multiple
-                    // futures are ready.
-                    //
-                    // The peer can starve client requests if it sends an
-                    // uninterrupted series of messages. But this is unlikely in
-                    // practice, due to network delays.
-                    //
-                    // If both futures are ready, there's no particular reason
-                    // to prefer one over the other.
-                    //
-                    // TODO: use `futures::select!`, which chooses a ready future
-                    //       at random, avoiding starvation
-                    //       (To use `select!`, we'll need to map the different
-                    //       results to a new enum types.)
-                    match future::select(peer_rx.next(), self.client_rx.next()).await {
-                        Either::Left((None, _)) => {
-                            self.fail_with(PeerError::ConnectionClosed);
-                        }
-                        Either::Left((Some(Err(e)), _)) => self.fail_with(e),
-                        Either::Left((Some(Ok(msg)), _)) => {
-                            let unhandled_msg = self.handle_message_as_request(msg).await;
+                    // [`select`] randomizes which arm it polls first, so this can never starve.
+                    select! {
+                        next_message = peer_rx.next().fuse() => {
+                            match next_message {
+                                Some(Ok(message)) => {
+                                    let unhandled_msg =
+                                        self.handle_message_as_request(message).await;
 
-                            if let Some(unhandled_msg) = unhandled_msg {
-                                debug!(
-                                    %unhandled_msg,
-                                    "ignoring unhandled request while awaiting a request"
-                                );
+                                    if let Some(unhandled_msg) = unhandled_msg {
+                                        debug!(
+                                            %unhandled_msg,
+                                            "ignoring unhandled request while awaiting a request"
+                                        );
+                                    }
+                                }
+                                Some(Err(error)) => self.fail_with(error),
+                                None => self.fail_with(PeerError::ConnectionClosed),
                             }
                         }
-                        Either::Right((None, _)) => {
-                            trace!("client_rx closed, ending connection");
+                        next_request = self.client_rx.next().fuse() => {
+                            match next_request {
+                                Some(request) => {
+                                    let span = request.span.clone();
+                                    self.handle_client_request(request).instrument(span).await
+                                }
+                                None => {
+                                    trace!("client_rx closed, ending connection");
 
-                            // There are no requests to be flushed,
-                            // but we need to set an error and update metrics.
-                            self.shutdown(PeerError::ClientDropped);
-                            break;
-                        }
-                        Either::Right((Some(req), _)) => {
-                            let span = req.span.clone();
-                            self.handle_client_request(req).instrument(span).await
+                                    // There are no requests to be flushed,
+                                    // but we need to set an error and update metrics.
+                                    self.shutdown(PeerError::ClientDropped);
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
