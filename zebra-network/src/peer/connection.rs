@@ -10,7 +10,7 @@
 use std::{borrow::Cow, collections::HashSet, fmt, pin::Pin, sync::Arc};
 
 use futures::{
-    future::{self, Either},
+    future::{self, Either, Fuse, FutureExt},
     prelude::*,
     select,
     stream::Stream,
@@ -379,13 +379,21 @@ impl Handler {
 #[must_use = "AwaitingResponse.tx.send() must be called before drop"]
 pub(super) enum State {
     /// Awaiting a client request or a peer message.
-    AwaitingRequest,
+    ///
+    /// The `idle_timeout` determines when to send a heartbeat `Ping` request to check that the
+    /// connection is still up.
+    AwaitingRequest { idle_timeout: Pin<Box<Fuse<Sleep>>> },
+
     /// Awaiting a peer message we can interpret as a client request.
     AwaitingResponse {
         handler: Handler,
         tx: MustUseOneshotSender<Result<Response, SharedPeerError>>,
         span: tracing::Span,
     },
+
+    /// Awaiting a heartbeat response.
+    AwaitingPong { span: tracing::Span },
+
     /// A failure has occurred and we are shutting down the connection.
     Failed,
 }
@@ -393,23 +401,32 @@ pub(super) enum State {
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&match self {
-            State::AwaitingRequest => "AwaitingRequest".to_string(),
+            State::AwaitingRequest { .. } => "AwaitingRequest".to_string(),
             State::AwaitingResponse { handler, .. } => {
                 format!("AwaitingResponse({})", handler)
             }
+            State::AwaitingPong { .. } => "AwaitingPong".to_string(),
             State::Failed => "Failed".to_string(),
         })
     }
 }
 
 impl State {
+    /// Returns a new [`State::AwaitingRequest`] with the `idle_timeout` set.
+    pub fn start_awaiting_request() -> Self {
+        State::AwaitingRequest {
+            idle_timeout: Box::pin(tokio::time::sleep(constants::HEARTBEAT_INTERVAL).fuse()),
+        }
+    }
+
     /// Returns the Zebra internal state as a string.
     pub fn command(&self) -> Cow<'static, str> {
         match self {
-            State::AwaitingRequest => "AwaitingRequest".into(),
+            State::AwaitingRequest { .. } => "AwaitingRequest".into(),
             State::AwaitingResponse { handler, .. } => {
                 format!("AwaitingResponse({})", handler.command()).into()
             }
+            State::AwaitingPong { .. } => "AwaitingPong".into(),
             State::Failed => "Failed".into(),
         }
     }
@@ -538,7 +555,10 @@ where
             self.update_state_metrics(None);
 
             match self.state {
-                State::AwaitingRequest => {
+                State::AwaitingRequest {
+                    ref mut idle_timeout,
+                } => {
+                    let _bla: &mut Pin<Box<Fuse<Sleep>>> = idle_timeout;
                     trace!("awaiting client request or peer message");
                     // CORRECTNESS
                     //
@@ -577,6 +597,24 @@ where
                                 }
                             }
                         }
+                        _ = idle_timeout.as_mut() => {
+                            let span = tracing::debug_span!("heartbeat");
+                            let nonce = Nonce::default();
+                            let request = Request::Ping(nonce);
+
+                            metrics::counter!(
+                                "zebra.net.out.requests",
+                                1,
+                                "command" => request.command(),
+                                "addr" => self.metrics_label.clone(),
+                            );
+                            self.update_state_metrics(format!("Out::Req::{}", request.command()));
+
+                            match self.peer_tx.send(Message::Ping(nonce)).await {
+                                Ok(()) => self.state = State::AwaitingPong { span },
+                                Err(error) => self.fail_with(error),
+                            }
+                        }
                     }
                 }
 
@@ -586,7 +624,8 @@ where
                     handler: Handler::Finished(_),
                     ref span,
                     ..
-                } => {
+                }
+                | State::AwaitingPong { ref span } => {
                     // We have to get rid of the span reference so we can tamper with the state.
                     let span = span.clone();
                     trace!(
@@ -618,11 +657,9 @@ where
                         }
 
                         let _ = tx.send(response.map_err(Into::into));
-                    } else {
-                        unreachable!("already checked for AwaitingResponse");
                     }
 
-                    self.state = State::AwaitingRequest;
+                    self.state = State::start_awaiting_request();
                 }
 
                 // We're awaiting a response to a client request,
@@ -718,7 +755,7 @@ where
                                 // Other request timeouts fail the request.
                                 State::AwaitingResponse { tx, .. } => {
                                     let _ = tx.send(Err(e.into()));
-                                    State::AwaitingRequest
+                                    State::start_awaiting_request()
                                 }
                                 _ => unreachable!(
                                     "unexpected failed connection state while AwaitingResponse: client_receiver: {:?}",
@@ -729,7 +766,7 @@ where
                         Either::Left((Either::Left(_), _peer_fut)) => {
                             // The client receiver was dropped, so we don't need to send on `tx` here.
                             trace!(parent: &span, "client request was cancelled");
-                            self.state = State::AwaitingRequest;
+                            self.state = State::start_awaiting_request()
                         }
                     }
                 }
@@ -810,10 +847,15 @@ where
                 pending,
                 self.client_rx
             ),
+            (AwaitingPong { .. }, request) => panic!(
+                "tried to process new request: {:?} while awaiting a heartbeat response:, client_receiver: {:?}",
+                request,
+                self.client_rx
+            ),
 
             // Consume the cached addresses from the peer,
             // to work-around a `zcashd` response rate-limit.
-            (AwaitingRequest, Peers) if !self.cached_addrs.is_empty() => {
+            (AwaitingRequest { .. }, Peers) if !self.cached_addrs.is_empty() => {
                 let cached_addrs = std::mem::take(&mut self.cached_addrs);
                 debug!(
                     addrs = cached_addrs.len(),
@@ -822,19 +864,19 @@ where
 
                 Ok(Handler::Finished(Ok(Response::Peers(cached_addrs))))
             }
-            (AwaitingRequest, Peers) => self
+            (AwaitingRequest { .. }, Peers) => self
                 .peer_tx
                 .send(Message::GetAddr)
                 .await
                 .map(|()| Handler::Peers),
 
-            (AwaitingRequest, Ping(nonce)) => self
+            (AwaitingRequest { .. }, Ping(nonce)) => self
                 .peer_tx
                 .send(Message::Ping(nonce))
                 .await
                 .map(|()| Handler::Ping(nonce)),
 
-            (AwaitingRequest, BlocksByHash(hashes)) => {
+            (AwaitingRequest { .. }, BlocksByHash(hashes)) => {
                 self
                     .peer_tx
                     .send(Message::GetData(
@@ -848,7 +890,7 @@ where
                          }
                     )
             }
-            (AwaitingRequest, TransactionsById(ids)) => {
+            (AwaitingRequest { .. }, TransactionsById(ids)) => {
                 self
                     .peer_tx
                     .send(Message::GetData(
@@ -862,7 +904,7 @@ where
                          })
             }
 
-            (AwaitingRequest, FindBlocks { known_blocks, stop }) => {
+            (AwaitingRequest { .. }, FindBlocks { known_blocks, stop }) => {
                 self
                     .peer_tx
                     .send(Message::GetBlocks { known_blocks, stop })
@@ -871,7 +913,7 @@ where
                          Handler::FindBlocks
                     )
             }
-            (AwaitingRequest, FindHeaders { known_blocks, stop }) => {
+            (AwaitingRequest { .. }, FindHeaders { known_blocks, stop }) => {
                 self
                     .peer_tx
                     .send(Message::GetHeaders { known_blocks, stop })
@@ -881,7 +923,7 @@ where
                     )
             }
 
-            (AwaitingRequest, MempoolTransactionIds) => {
+            (AwaitingRequest { .. }, MempoolTransactionIds) => {
                 self
                     .peer_tx
                     .send(Message::Mempool)
@@ -891,7 +933,7 @@ where
                     )
             }
 
-            (AwaitingRequest, PushTransaction(transaction)) => {
+            (AwaitingRequest { .. }, PushTransaction(transaction)) => {
                 self
                     .peer_tx
                     .send(Message::Tx(transaction))
@@ -900,7 +942,7 @@ where
                          Handler::Finished(Ok(Response::Nil))
                     )
             }
-            (AwaitingRequest, AdvertiseTransactionIds(hashes)) => {
+            (AwaitingRequest { .. }, AdvertiseTransactionIds(hashes)) => {
                 self
                     .peer_tx
                     .send(Message::Inv(hashes.iter().map(|h| (*h).into()).collect()))
@@ -909,7 +951,7 @@ where
                          Handler::Finished(Ok(Response::Nil))
                     )
             }
-            (AwaitingRequest, AdvertiseBlock(hash)) => {
+            (AwaitingRequest { .. }, AdvertiseBlock(hash)) => {
                 self
                     .peer_tx
                     .send(Message::Inv(vec![hash.into()]))

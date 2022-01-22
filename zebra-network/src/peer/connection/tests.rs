@@ -45,7 +45,7 @@ fn new_test_connection<A>() -> (
     let peer_tx = peer_outbound_tx.sink_map_err(error_converter);
 
     let connection = Connection {
-        state: State::AwaitingRequest,
+        state: State::start_awaiting_request(),
         request_timer: None,
         cached_addrs: Vec::new(),
         svc: mock_inbound_service.clone(),
