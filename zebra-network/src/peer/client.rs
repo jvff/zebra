@@ -28,10 +28,6 @@ pub mod tests;
 
 /// The "client" duplex half of a peer connection.
 pub struct Client {
-    /// Used to shut down the corresponding heartbeat.
-    /// This is always Some except when we take it on drop.
-    pub(crate) shutdown_tx: Option<oneshot::Sender<CancelHeartbeatTask>>,
-
     /// Used to send [`Request`]s to the remote peer.
     pub(crate) server_tx: mpsc::Sender<ClientRequest>,
 
@@ -45,17 +41,7 @@ pub struct Client {
 
     /// A handle to the task responsible for connecting to the peer.
     pub(crate) connection_task: JoinHandle<()>,
-
-    /// A handle to the task responsible for sending periodic heartbeats.
-    pub(crate) heartbeat_task: JoinHandle<()>,
 }
-
-/// A signal sent by the [`Client`] half of a peer connection,
-/// to cancel a [`Client`]'s heartbeat task.
-///
-/// When it receives this signal, the heartbeat task exits.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct CancelHeartbeatTask;
 
 /// A message from the `peer::Client` to the `peer::Server`.
 #[derive(Debug)]
@@ -259,35 +245,6 @@ impl<T: std::fmt::Debug> Drop for MustUseOneshotSender<T> {
 }
 
 impl Client {
-    /// Check if this connection's heartbeat task has exited.
-    fn check_heartbeat(&mut self, cx: &mut Context<'_>) -> Result<(), SharedPeerError> {
-        let is_canceled = self
-            .shutdown_tx
-            .as_mut()
-            .expect("only taken on drop")
-            .poll_canceled(cx)
-            .is_ready();
-
-        if is_canceled {
-            return self.set_task_exited_error("heartbeat", PeerError::HeartbeatTaskExited);
-        }
-
-        match self.heartbeat_task.poll_unpin(cx) {
-            Poll::Pending => {
-                // Heartbeat task is still running.
-                Ok(())
-            }
-            Poll::Ready(Ok(())) => {
-                // Heartbeat task stopped unexpectedly, without panicking.
-                self.set_task_exited_error("heartbeat", PeerError::HeartbeatTaskExited)
-            }
-            Poll::Ready(Err(error)) => {
-                // Heartbeat task stopped unexpectedly with a panic.
-                panic!("heartbeat task has panicked: {}", error);
-            }
-        }
-    }
-
     /// Check if the connection's task has exited.
     fn check_connection(&mut self, context: &mut Context<'_>) -> Result<(), SharedPeerError> {
         match self.connection_task.poll_unpin(context) {
@@ -344,15 +301,10 @@ impl Client {
 
     /// Shut down the resources held by the client half of this peer connection.
     ///
-    /// Stops further requests to the remote peer, and stops the heartbeat task.
+    /// Stops further requests to the remote peer.
     fn shutdown(&mut self) {
         // Prevent any senders from sending more messages to this peer.
         self.server_tx.close_channel();
-
-        // Stop the heartbeat task
-        if let Some(shutdown_tx) = self.shutdown_tx.take() {
-            let _ = shutdown_tx.send(CancelHeartbeatTask);
-        }
     }
 }
 
@@ -368,15 +320,12 @@ impl Service<Request> for Client {
         // The current task must be scheduled for wakeup every time we return
         // `Poll::Pending`.
         //
-        // `check_heartbeat` and `check_connection` schedule the client task for wakeup
-        // if either task exits, or if the heartbeat task drops the cancel handle.
+        // `check_connection` schedules the client task for wakeup if the connection task exits.
         //
         //`ready!` returns `Poll::Pending` when `server_tx` is unready, and
         // schedules this task for wakeup.
 
-        let mut result = self
-            .check_heartbeat(cx)
-            .and_then(|()| self.check_connection(cx));
+        let mut result = self.check_connection(cx);
 
         if result.is_ok() {
             result = ready!(self.poll_request(cx));

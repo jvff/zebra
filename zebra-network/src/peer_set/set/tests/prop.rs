@@ -198,7 +198,7 @@ where
     let mut number_of_connected_peers = 0;
     for harness in harnesses {
         let is_outdated = harness.version() < minimum_version;
-        let is_connected = harness.wants_connection_heartbeats();
+        let is_connected = !harness.try_to_receive_outbound_client_request().is_closed();
 
         prop_assert!(
             is_connected != is_outdated,

@@ -6,13 +6,13 @@ mod vectors;
 use std::time::Duration;
 
 use futures::{
-    channel::{mpsc, oneshot},
+    channel::mpsc,
     future::{self, AbortHandle, Future, FutureExt},
 };
 use tokio::task::JoinHandle;
 
 use crate::{
-    peer::{error::SharedPeerError, CancelHeartbeatTask, Client, ClientRequest, ErrorSlot},
+    peer::{error::SharedPeerError, Client, ClientRequest, ErrorSlot},
     protocol::external::types::Version,
 };
 
@@ -22,11 +22,9 @@ const MAX_PEER_CONNECTION_TIME: Duration = Duration::from_secs(10);
 /// A harness with mocked channels for testing a [`Client`] instance.
 pub struct ClientTestHarness {
     client_request_receiver: Option<mpsc::Receiver<ClientRequest>>,
-    shutdown_receiver: Option<oneshot::Receiver<CancelHeartbeatTask>>,
     error_slot: ErrorSlot,
     version: Version,
     connection_aborter: AbortHandle,
-    heartbeat_aborter: AbortHandle,
 }
 
 impl ClientTestHarness {
@@ -36,40 +34,12 @@ impl ClientTestHarness {
         ClientTestHarnessBuilder {
             version: None,
             connection_task: None,
-            heartbeat_task: None,
         }
     }
 
     /// Gets the peer protocol version associated to the [`Client`].
     pub fn version(&self) -> Version {
         self.version
-    }
-
-    /// Returns true if the [`Client`] instance still wants connection heartbeats to be sent.
-    ///
-    /// Checks that the client:
-    /// - has not been dropped,
-    /// - has not closed or dropped the mocked heartbeat task channel, and
-    /// - has not asked the mocked heartbeat task to shut down.
-    pub fn wants_connection_heartbeats(&mut self) -> bool {
-        let receive_result = self
-            .shutdown_receiver
-            .as_mut()
-            .expect("heartbeat shutdown receiver endpoint has been dropped")
-            .try_recv();
-
-        match receive_result {
-            Ok(None) => true,
-            Ok(Some(CancelHeartbeatTask)) | Err(oneshot::Canceled) => false,
-        }
-    }
-
-    /// Drops the mocked heartbeat shutdown receiver endpoint.
-    pub fn drop_heartbeat_shutdown_receiver(&mut self) {
-        let _ = self
-            .shutdown_receiver
-            .take()
-            .expect("heartbeat shutdown receiver endpoint has already been dropped");
     }
 
     /// Closes the receiver endpoint of [`ClientRequests`] that are supposed to be sent to the
@@ -132,14 +102,6 @@ impl ClientTestHarness {
         // Allow the task to detect that it was aborted.
         tokio::task::yield_now().await;
     }
-
-    /// Stops the mock background task that sends periodic heartbeats.
-    pub async fn stop_heartbeat_task(&self) {
-        self.heartbeat_aborter.abort();
-
-        // Allow the task to detect that it was aborted.
-        tokio::task::yield_now().await;
-    }
 }
 
 /// The result of an attempt to receive a [`ClientRequest`] sent by the [`Client`] instance.
@@ -183,16 +145,14 @@ impl ReceiveRequestAttempt {
 /// Mocked data is used to construct a real [`Client`] instance. The mocked data is initialized by
 /// the [`ClientTestHarnessBuilder`], and can be accessed and changed through the
 /// [`ClientTestHarness`].
-pub struct ClientTestHarnessBuilder<C = future::Ready<()>, H = future::Ready<()>> {
+pub struct ClientTestHarnessBuilder<C = future::Ready<()>> {
     connection_task: Option<C>,
-    heartbeat_task: Option<H>,
     version: Option<Version>,
 }
 
-impl<C, H> ClientTestHarnessBuilder<C, H>
+impl<C> ClientTestHarnessBuilder<C>
 where
     C: Future<Output = ()> + Send + 'static,
-    H: Future<Output = ()> + Send + 'static,
 {
     /// Configure the mocked version for the peer.
     pub fn with_version(mut self, version: Version) -> Self {
@@ -204,54 +164,34 @@ where
     pub fn with_connection_task<NewC>(
         self,
         connection_task: NewC,
-    ) -> ClientTestHarnessBuilder<NewC, H> {
+    ) -> ClientTestHarnessBuilder<NewC> {
         ClientTestHarnessBuilder {
             connection_task: Some(connection_task),
-            heartbeat_task: self.heartbeat_task,
-            version: self.version,
-        }
-    }
-
-    /// Configure the mock heartbeat task future to use.
-    pub fn with_heartbeat_task<NewH>(
-        self,
-        heartbeat_task: NewH,
-    ) -> ClientTestHarnessBuilder<C, NewH> {
-        ClientTestHarnessBuilder {
-            connection_task: self.connection_task,
-            heartbeat_task: Some(heartbeat_task),
             version: self.version,
         }
     }
 
     /// Build a [`Client`] instance with the mocked data and a [`ClientTestHarness`] to track it.
     pub fn finish(self) -> (Client, ClientTestHarness) {
-        let (shutdown_sender, shutdown_receiver) = oneshot::channel();
         let (client_request_sender, client_request_receiver) = mpsc::channel(1);
         let error_slot = ErrorSlot::default();
         let version = self.version.unwrap_or(Version(0));
 
         let (connection_task, connection_aborter) =
             Self::spawn_background_task_or_fallback(self.connection_task);
-        let (heartbeat_task, heartbeat_aborter) =
-            Self::spawn_background_task_or_fallback(self.heartbeat_task);
 
         let client = Client {
-            shutdown_tx: Some(shutdown_sender),
             server_tx: client_request_sender,
             error_slot: error_slot.clone(),
             version,
             connection_task,
-            heartbeat_task,
         };
 
         let harness = ClientTestHarness {
             client_request_receiver: Some(client_request_receiver),
-            shutdown_receiver: Some(shutdown_receiver),
             error_slot,
             version,
             connection_aborter,
-            heartbeat_aborter,
         };
 
         (client, harness)
