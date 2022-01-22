@@ -437,8 +437,6 @@ impl ChainTipChange {
     pub fn last_tip_change(&mut self) -> Option<TipAction> {
         let block = self.latest_chain_tip.with_chain_tip_block(|block| {
             if Some(block.hash) != self.last_change_hash {
-                self.last_change_hash = Some(block.hash);
-
                 Some(block.clone())
             } else {
                 // Ignore an unchanged tip.
@@ -446,7 +444,12 @@ impl ChainTipChange {
             }
         })??;
 
-        Some(self.action(block))
+        let block_hash = block.hash;
+        let tip_action = self.action(block);
+
+        self.last_change_hash = Some(block_hash);
+
+        Some(tip_action)
     }
 
     /// Return an action based on `block` and the last change we returned.
