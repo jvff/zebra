@@ -116,6 +116,8 @@ impl CachedFfiTransaction {
         let precomputed = unsafe {
             zcash_script::zcash_script_new_precomputed_tx(
                 tx_to_ptr, tx_to_len,
+                // TODO: Ensure that `all_previous_outputs_ptr` is not stored inside `precomputed`
+                // so that `CachedFfiTransaction` is still `Send`.
                 // all_previous_outputs_ptr,
                 // all_previous_outputs_len,
                 &mut err,
