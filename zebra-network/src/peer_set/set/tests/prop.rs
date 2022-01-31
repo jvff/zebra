@@ -204,7 +204,6 @@ proptest! {
                 .build();
 
             // Remove peers, test broadcast until there is only 1 peer left in the peerset
-            let mut new_number_of_peers = total_number_of_peers;
             for port in 1u16..total_number_of_peers as u16 {
                 peer_set.remove(&SocketAddr::new([127, 0, 0, 1].into(), port));
                 handles.remove(0);
@@ -233,12 +232,6 @@ proptest! {
 
                 // Make sure the message was broadcasted to the right number of peers
                 prop_assert_eq!(received, number_of_peers_to_broadcast);
-
-                // Exit the loop when we have only 1 peer left
-                new_number_of_peers -= 1;
-                if new_number_of_peers == 1 {
-                    break;
-                }
             }
 
             // Remove the last peer we have left in the peerset
