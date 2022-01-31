@@ -682,7 +682,7 @@ where
                         input_index,
                     };
 
-                    script_verifier.clone().oneshot(request).map_ok(|_r| {})
+                    script_verifier.oneshot(request)
                 })
                 .collect();
 
