@@ -457,31 +457,24 @@ where
         let mut spent_utxos = HashMap::new();
         let mut spent_outputs = Vec::new();
         for input in inputs {
-            match input {
-                transparent::Input::PrevOut {
-                    outpoint,
-                    unlock_script: _,
-                    sequence: _,
-                } => {
-                    tracing::trace!("awaiting outpoint lookup");
-                    let utxo = if let Some(output) = known_utxos.get(outpoint) {
-                        tracing::trace!("UXTO in known_utxos, discarding query");
-                        output.utxo.clone()
+            if let transparent::Input::PrevOut { outpoint, .. } = input {
+                tracing::trace!("awaiting outpoint lookup");
+                let utxo = if let Some(output) = known_utxos.get(outpoint) {
+                    tracing::trace!("UXTO in known_utxos, discarding query");
+                    output.utxo.clone()
+                } else {
+                    let query = state
+                        .clone()
+                        .oneshot(zebra_state::Request::AwaitUtxo(*outpoint));
+                    if let zebra_state::Response::Utxo(utxo) = query.await? {
+                        utxo
                     } else {
-                        let query = state
-                            .clone()
-                            .oneshot(zebra_state::Request::AwaitUtxo(*outpoint));
-                        if let zebra_state::Response::Utxo(utxo) = query.await? {
-                            utxo
-                        } else {
-                            unreachable!("AwaitUtxo always responds with Utxo")
-                        }
-                    };
-                    tracing::trace!(?utxo, "got UTXO");
-                    spent_outputs.push(utxo.output.clone());
-                    spent_utxos.insert(*outpoint, utxo);
-                }
-                transparent::Input::Coinbase { .. } => continue,
+                        unreachable!("AwaitUtxo always responds with Utxo")
+                    }
+                };
+                tracing::trace!(?utxo, "got UTXO");
+                spent_outputs.push(utxo.output.clone());
+                spent_utxos.insert(*outpoint, utxo);
             }
         }
         Ok((spent_utxos, spent_outputs))
