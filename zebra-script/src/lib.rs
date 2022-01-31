@@ -301,7 +301,7 @@ mod tests {
         let amount = 212 * coin;
         let output = transparent::Output {
             value: amount.try_into()?,
-            lock_script: transparent::Script::new(&SCRIPT_PUBKEY.clone()),
+            lock_script: transparent::Script::new(&SCRIPT_PUBKEY),
         };
         let input_index = 0;
         let branch_id = Blossom
@@ -338,7 +338,7 @@ mod tests {
         let amount = 211 * coin;
         let output = transparent::Output {
             value: amount.try_into()?,
-            lock_script: transparent::Script::new(&SCRIPT_PUBKEY.clone()[..]),
+            lock_script: transparent::Script::new(&SCRIPT_PUBKEY),
         };
         let input_index = 0;
         let branch_id = Blossom
