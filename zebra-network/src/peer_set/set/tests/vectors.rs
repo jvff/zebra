@@ -162,8 +162,6 @@ fn peer_set_ready_multiple_connections() {
 
         // Peer set hangs when no more connections are present
         let peer_ready = peer_set.ready();
-        assert!(timeout(Duration::from_millis(10), peer_ready)
-            .await
-            .is_err());
+        assert!(timeout(Duration::from_secs(10), peer_ready).await.is_err());
     });
 }
