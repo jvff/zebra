@@ -52,8 +52,6 @@
 //!    * runs in the background and gossips newly added mempool transactions
 //!      to peers
 
-use std::cmp::max;
-
 use abscissa_core::{config, Command, FrameworkError, Options, Runnable};
 use color_eyre::eyre::{eyre, Report};
 use futures::FutureExt;
@@ -267,13 +265,14 @@ impl StartCmd {
 
         // TODO: do we also need to account for concurrent use across services?
         //       we could multiply the maximum by 3/2, or add a fixed constant
-        max(
+        [
             config.sync.max_concurrent_block_requests,
-            max(
-                inbound::downloads::MAX_INBOUND_CONCURRENCY,
-                mempool::downloads::MAX_INBOUND_CONCURRENCY,
-            ),
-        )
+            inbound::downloads::MAX_INBOUND_CONCURRENCY,
+            mempool::downloads::MAX_INBOUND_CONCURRENCY,
+        ]
+        .into_iter()
+        .max()
+        .expect("array is not empty")
     }
 }
 
