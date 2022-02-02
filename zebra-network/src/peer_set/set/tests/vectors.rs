@@ -151,13 +151,10 @@ fn peer_set_ready_multiple_connections() {
         handles[1].stop_connection_task().await;
 
         // We can still make the peer set ready
-        let peer_ready = peer_set
+        peer_set
             .ready()
             .await
             .expect("peer set service is always ready");
-
-        // We should have less ready peers
-        assert_eq!(peer_ready.ready_services.len(), 1);
 
         // Stop the connection of the last peer
         handles[2].stop_connection_task().await;
