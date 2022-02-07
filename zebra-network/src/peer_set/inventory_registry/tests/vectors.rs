@@ -55,8 +55,10 @@ async fn inv_registry_one_advertised_ok() {
         .expect("unexpected dropped registry sender channel");
 
     assert_eq!(
-        inv_registry.advertising_peers(test_hash).next(),
-        Some(&test_peer),
+        inv_registry
+            .advertising_peers(test_hash)
+            .collect::<Vec<_>>(),
+        vec![&test_peer],
     );
     assert_eq!(inv_registry.missing_peers(test_hash).count(), 0);
 }
@@ -84,8 +86,8 @@ async fn inv_registry_one_missing_ok() {
 
     assert_eq!(inv_registry.advertising_peers(test_hash).count(), 0);
     assert_eq!(
-        inv_registry.missing_peers(test_hash).next(),
-        Some(&test_peer),
+        inv_registry.missing_peers(test_hash).collect::<Vec<_>>(),
+        vec![&test_peer],
     );
 }
 
@@ -128,8 +130,8 @@ async fn inv_registry_prefer_missing_order(missing_first: bool) {
 
     assert_eq!(inv_registry.advertising_peers(test_hash).count(), 0);
     assert_eq!(
-        inv_registry.missing_peers(test_hash).next(),
-        Some(&test_peer),
+        inv_registry.missing_peers(test_hash).collect::<Vec<_>>(),
+        vec![&test_peer],
     );
 }
 
@@ -176,13 +178,15 @@ async fn inv_registry_prefer_current_order(missing_current: bool) {
     if missing_current {
         assert_eq!(inv_registry.advertising_peers(test_hash).count(), 0);
         assert_eq!(
-            inv_registry.missing_peers(test_hash).next(),
-            Some(&test_peer),
+            inv_registry.missing_peers(test_hash).collect::<Vec<_>>(),
+            vec![&test_peer],
         );
     } else {
         assert_eq!(
-            inv_registry.advertising_peers(test_hash).next(),
-            Some(&test_peer),
+            inv_registry
+                .advertising_peers(test_hash)
+                .collect::<Vec<_>>(),
+            vec![&test_peer],
         );
         assert_eq!(inv_registry.missing_peers(test_hash).count(), 0);
     }
