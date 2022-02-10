@@ -60,8 +60,7 @@ async fn inbound_peers_empty_address_book() -> Result<(), crate::BoxError> {
     ) = setup().await;
 
     // Use inbound directly
-    let request = inbound_service.clone().oneshot(Request::Peers);
-    let response = request.await;
+    let response = inbound_service.clone().oneshot(Request::Peers).await;
     match response.as_ref() {
         Ok(Response::Peers(single_peer)) if single_peer.len() == 1 => {
             assert_eq!(single_peer.first().unwrap().addr(), listen_addr)
@@ -79,8 +78,7 @@ async fn inbound_peers_empty_address_book() -> Result<(), crate::BoxError> {
     };
 
     // Use the connected peer via a local TCP connection
-    let request = connected_peer_service.clone().oneshot(Request::Peers);
-    let response = request.await;
+    let response = connected_peer_service.clone().oneshot(Request::Peers).await;
     match response.as_ref() {
         Ok(Response::Peers(single_peer)) if single_peer.len() == 1 => {
             assert_eq!(single_peer.first().unwrap().addr(), listen_addr)
@@ -139,10 +137,10 @@ async fn inbound_block_empty_state_notfound() -> Result<(), crate::BoxError> {
     let test_block = block::Hash([0x11; 32]);
 
     // Use inbound directly
-    let request = inbound_service
+    let response = inbound_service
         .clone()
-        .oneshot(Request::BlocksByHash(iter::once(test_block).collect()));
-    let response = request.await;
+        .oneshot(Request::BlocksByHash(iter::once(test_block).collect()))
+        .await;
     match response.as_ref() {
         Ok(Response::Blocks(single_block)) if single_block.len() == 1 => {
             assert_eq!(single_block.first().unwrap(), &Missing(test_block));
@@ -160,10 +158,10 @@ async fn inbound_block_empty_state_notfound() -> Result<(), crate::BoxError> {
     };
 
     // Use the connected peer via a local TCP connection
-    let request = connected_peer_service
+    let response = connected_peer_service
         .clone()
-        .oneshot(Request::BlocksByHash(iter::once(test_block).collect()));
-    let response = request.await;
+        .oneshot(Request::BlocksByHash(iter::once(test_block).collect()))
+        .await;
     match response.as_ref() {
         Err(missing_error) => {
             let missing_error = missing_error
@@ -232,10 +230,10 @@ async fn inbound_tx_empty_state_notfound() -> Result<(), crate::BoxError> {
     // Test both transaction ID variants, separately and together
     for txs in [vec![test_tx], vec![test_wtx], vec![test_tx, test_wtx]] {
         // Use inbound directly
-        let request = inbound_service
+        let response = inbound_service
             .clone()
-            .oneshot(Request::TransactionsById(txs.iter().copied().collect()));
-        let response = request.await;
+            .oneshot(Request::TransactionsById(txs.iter().copied().collect()))
+            .await;
         match response.as_ref() {
             Ok(Response::Transactions(response_txs)) => {
                 // The response order is unstable, because it depends on concurrent inbound futures.
@@ -257,10 +255,10 @@ async fn inbound_tx_empty_state_notfound() -> Result<(), crate::BoxError> {
         };
 
         // Use the connected peer via a local TCP connection
-        let request = connected_peer_service
+        let response = connected_peer_service
             .clone()
-            .oneshot(Request::TransactionsById(txs.iter().copied().collect()));
-        let response = request.await;
+            .oneshot(Request::TransactionsById(txs.iter().copied().collect()))
+            .await;
         match response.as_ref() {
             Err(missing_error) => {
                 let missing_error = missing_error
