@@ -136,7 +136,7 @@ impl<T> InventoryStatus<T> {
 
 impl<T: Clone> InventoryStatus<T> {
     /// Get the inner item, regardless of status.
-    pub fn inner(&self) -> T {
+    pub fn to_inner(&self) -> T {
         match self {
             Available(item) | Missing(item) => item.clone(),
         }
@@ -270,7 +270,7 @@ impl InventoryRegistry {
     /// `Missing` markers are not updated until the registry rotates, for security reasons.
     fn register(&mut self, change: InventoryChange) {
         let new_status = change.marker();
-        let (invs, addr) = change.inner();
+        let (invs, addr) = change.to_inner();
 
         for inv in invs {
             use InventoryHash::*;
