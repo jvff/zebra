@@ -41,7 +41,7 @@ use ResponseStatus::*;
 /// Uses a real Zebra network stack with a local listener address,
 /// and an isolated Zebra inbound TCP connection.
 #[tokio::test]
-async fn inbound_peers_empty_address_book() -> Result<(), crate::BoxError> {
+async fn inbound_peers_empty_address_book() {
     let (
         // real services
         connected_peer_service,
@@ -108,15 +108,13 @@ async fn inbound_peers_empty_address_book() -> Result<(), crate::BoxError> {
         "unexpected error or panic in transaction gossip task: {:?}",
         tx_gossip_result,
     );
-
-    Ok(())
 }
 
 /// Check that a network stack with an empty state responds to block requests with `notfound`.
 ///
 /// Uses a real Zebra network stack, with an isolated Zebra inbound TCP connection.
 #[tokio::test]
-async fn inbound_block_empty_state_notfound() -> Result<(), crate::BoxError> {
+async fn inbound_block_empty_state_notfound() {
     let (
         // real services
         connected_peer_service,
@@ -192,8 +190,6 @@ async fn inbound_block_empty_state_notfound() -> Result<(), crate::BoxError> {
         "unexpected error or panic in transaction gossip task: {:?}",
         tx_gossip_result,
     );
-
-    Ok(())
 }
 
 /// Check that a network stack with an empty state responds to single transaction requests with `notfound`.
@@ -202,7 +198,7 @@ async fn inbound_block_empty_state_notfound() -> Result<(), crate::BoxError> {
 ///
 /// TODO: test a response with some Available and some Missing transactions.
 #[tokio::test]
-async fn inbound_tx_empty_state_notfound() -> Result<(), crate::BoxError> {
+async fn inbound_tx_empty_state_notfound() {
     let (
         // real services
         connected_peer_service,
@@ -314,8 +310,6 @@ async fn inbound_tx_empty_state_notfound() -> Result<(), crate::BoxError> {
         "unexpected error or panic in transaction gossip task: {:?}",
         tx_gossip_result,
     );
-
-    Ok(())
 }
 
 /// Setup a real Zebra network stack, with a connected peer using a real isolated network stack.
