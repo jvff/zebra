@@ -46,10 +46,8 @@ pub trait ChainTip {
     fn estimate_network_chain_tip_height(
         &self,
         network: Network,
-        #[cfg(test)] now: DateTime<Utc>,
+        now: DateTime<Utc>,
     ) -> Option<block::Height> {
-        #[cfg(not(test))]
-        let now = Utc::now();
         let (current_height, current_block_time) = self.best_tip_height_and_block_time()?;
 
         let estimator =
