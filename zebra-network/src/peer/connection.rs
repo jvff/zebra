@@ -288,8 +288,8 @@ impl Handler {
                     // Ignoring the message gives us a chance to synchronize back to the correct
                     // request.
                     //
-                    // Peers can avoid these cascading errors by sending an explicit `notfound`.
-                    // Zebra sends `notfound`, but `zcashd` doesn't.
+                    // Peers can avoid these cascading errors for scenario #2 by sending an explicit
+                    // `notfound`. Zebra sends `notfound`, but `zcashd` doesn't.
                     ignored_msg = Some(Message::Block(block));
                 }
 
