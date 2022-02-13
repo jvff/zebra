@@ -60,6 +60,7 @@ pub async fn connect_isolated_tor(
 ///
 /// This function can make the isolated connection send different responses to peers,
 /// which makes it stand out from other isolated connections from other peers.
+#[cfg(any(test, feature = "proptest-impl"))]
 pub async fn connect_isolated_tor_with_inbound<InboundService>(
     network: Network,
     hostname: String,

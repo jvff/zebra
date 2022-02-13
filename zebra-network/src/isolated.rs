@@ -74,6 +74,7 @@ where
 ///
 /// This function can make the isolated connection send different responses to peers,
 /// which makes it stand out from other isolated connections from other peers.
+#[cfg(any(test, feature = "proptest-impl"))]
 pub fn connect_isolated_with_inbound<PeerTransport, InboundService>(
     network: Network,
     data_stream: PeerTransport,
