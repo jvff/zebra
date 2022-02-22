@@ -29,6 +29,7 @@ use std::{
 use futures::{future::FutureExt, stream::Stream};
 use tokio::sync::watch;
 use tower::{buffer::Buffer, timeout::Timeout, util::BoxService, Service};
+use tracing::instrument;
 
 use zebra_chain::{
     block::Height,
@@ -40,7 +41,7 @@ use zebra_network as zn;
 use zebra_state as zs;
 use zebra_state::{ChainTipChange, TipAction};
 
-use crate::components::sync::SyncStatus;
+use crate::sync::SyncStatus;
 
 pub mod config;
 mod crawler;
@@ -53,7 +54,7 @@ mod storage;
 #[cfg(test)]
 mod tests;
 
-pub use crate::BoxError;
+pub use tower::BoxError;
 
 pub use config::Config;
 pub use crawler::Crawler;

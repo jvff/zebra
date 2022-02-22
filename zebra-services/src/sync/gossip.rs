@@ -2,12 +2,10 @@
 
 use thiserror::Error;
 use tokio::sync::watch;
-use tower::{timeout::Timeout, Service, ServiceExt};
+use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
 
 use zebra_network as zn;
 use zebra_state::ChainTipChange;
-
-use crate::BoxError;
 
 use super::{SyncStatus, TIPS_RESPONSE_TIMEOUT};
 
@@ -23,7 +21,7 @@ pub enum BlockGossipError {
     SyncStatus(watch::error::RecvError),
 
     #[error("permanent peer set failure")]
-    PeerSetReadiness(zn::BoxError),
+    PeerSetReadiness(BoxError),
 }
 
 /// Run continuously, gossiping newly verified [`block::Hash`]es to peers.

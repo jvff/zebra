@@ -6,11 +6,7 @@
 //! don't fit the async context well.
 
 pub mod inbound;
-#[allow(missing_docs)]
-pub mod mempool;
 pub mod metrics;
-#[allow(missing_docs)]
-pub mod sync;
 #[allow(missing_docs)]
 pub mod tokio;
 #[allow(missing_docs)]

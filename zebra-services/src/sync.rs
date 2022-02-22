@@ -10,8 +10,9 @@ use indexmap::IndexSet;
 use tokio::time::sleep;
 use tower::{
     builder::ServiceBuilder, hedge::Hedge, limit::ConcurrencyLimit, retry::Retry, timeout::Timeout,
-    Service, ServiceExt,
+    BoxError, Service, ServiceExt,
 };
+use tracing::instrument;
 
 use zebra_chain::{
     block::{self, Block},
@@ -24,9 +25,7 @@ use zebra_consensus::{
 use zebra_network as zn;
 use zebra_state as zs;
 
-use crate::{
-    components::sync::downloads::BlockDownloadVerifyError, config::ZebradConfig, BoxError,
-};
+use crate::{config::ZebradConfig, sync::downloads::BlockDownloadVerifyError};
 
 mod downloads;
 mod gossip;

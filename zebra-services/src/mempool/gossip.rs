@@ -3,7 +3,7 @@
 //! This module is just a function [`gossip_mempool_transaction_id`] that waits for mempool
 //! insertion events received in a channel and broadcasts the transactions to peers.
 
-use tower::{timeout::Timeout, Service, ServiceExt};
+use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
 
 use zebra_network as zn;
 
@@ -12,9 +12,7 @@ use zebra_chain::transaction::UnminedTxId;
 
 use std::collections::HashSet;
 
-use crate::BoxError;
-
-use crate::components::sync::TIPS_RESPONSE_TIMEOUT;
+use crate::sync::TIPS_RESPONSE_TIMEOUT;
 
 /// Run continuously, gossiping new [`zebra_chain::transaction::UnminedTxId`] to peers.
 ///

@@ -18,6 +18,7 @@ use pin_project::pin_project;
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tower::{hedge, Service, ServiceExt};
+use tracing::instrument;
 use tracing_futures::Instrument;
 
 use zebra_chain::{

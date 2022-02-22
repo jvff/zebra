@@ -17,7 +17,7 @@ use tokio::{task::JoinHandle, time::sleep};
 use tower::{BoxError, Service, ServiceExt};
 use tracing_futures::Instrument;
 
-use crate::components::mempool;
+use crate::mempool;
 
 /// The delay between queue check events.
 ///

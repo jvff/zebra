@@ -37,6 +37,7 @@ use pin_project::{pin_project, pinned_drop};
 use thiserror::Error;
 use tokio::{sync::oneshot, task::JoinHandle};
 use tower::{Service, ServiceExt};
+use tracing::{debug, instrument, trace};
 use tracing_futures::Instrument;
 
 use zebra_chain::transaction::{self, UnminedTx, UnminedTxId, VerifiedUnminedTx};
@@ -44,7 +45,7 @@ use zebra_consensus::transaction as tx;
 use zebra_network as zn;
 use zebra_state as zs;
 
-use crate::components::sync::{BLOCK_DOWNLOAD_TIMEOUT, BLOCK_VERIFY_TIMEOUT};
+use crate::sync::{BLOCK_DOWNLOAD_TIMEOUT, BLOCK_VERIFY_TIMEOUT};
 
 use super::MempoolError;
 

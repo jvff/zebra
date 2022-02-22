@@ -1,6 +1,7 @@
 //! A channel which holds a list of recent syncer response lengths.
 
 use tokio::sync::watch;
+use tracing::instrument;
 
 #[cfg(test)]
 mod tests;

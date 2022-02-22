@@ -14,12 +14,12 @@
 //! # Example
 //!
 //! ```
-//! use zebrad::components::mempool;
+//! use zebra_services::mempool;
 //! #
 //! # use zebra_chain::parameters::Network;
+//! # use zebra_services::sync::SyncStatus;
 //! # use zebra_state::ChainTipSender;
 //! # use zebra_test::mock_service::MockService;
-//! # use zebrad::components::sync::SyncStatus;
 //! #
 //! # let runtime = tokio::runtime::Builder::new_current_thread()
 //! #     .enable_all()
@@ -52,13 +52,14 @@ use std::{collections::HashSet, time::Duration};
 use futures::{future, pin_mut, stream::FuturesUnordered, StreamExt};
 use tokio::{sync::watch, task::JoinHandle, time::sleep};
 use tower::{timeout::Timeout, BoxError, Service, ServiceExt};
+use tracing::{debug, info, trace};
 use tracing_futures::Instrument;
 
 use zebra_chain::{block::Height, transaction::UnminedTxId};
 use zebra_network as zn;
 use zebra_state::ChainTipChange;
 
-use crate::components::{
+use crate::{
     mempool::{self, downloads::Gossip, Config},
     sync::SyncStatus,
 };
