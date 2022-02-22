@@ -9,6 +9,7 @@ members = [
         "zebra-rpc",
         "zebra-client",
         "zebra-test",
+        "zebra-services",
         "zebra-utils",
         "tower-batch",
         "tower-fallback",
