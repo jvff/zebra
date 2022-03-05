@@ -107,11 +107,11 @@ where
     >,
 {
     /// Zebra's application version.
-    pub app_version: String,
+    app_version: String,
     /// A handle to the mempool service.
-    pub mempool: Buffer<Mempool, mempool::Request>,
+    mempool: Buffer<Mempool, mempool::Request>,
     /// A handle to the state service.
-    pub state: Buffer<State, zebra_state::Request>,
+    state: Buffer<State, zebra_state::Request>,
 }
 
 impl<Mempool, State> RpcImpl<Mempool, State>
