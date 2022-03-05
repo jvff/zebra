@@ -97,7 +97,6 @@ pub trait Rpc {
 }
 
 /// RPC method implementations.
-
 pub struct RpcImpl<Mempool, State>
 where
     Mempool: Service<mempool::Request, Response = mempool::Response, Error = BoxError>,
