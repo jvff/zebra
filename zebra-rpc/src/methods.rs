@@ -232,11 +232,12 @@ where
 
             match response {
                 zebra_state::Response::Block(Some(block)) => Ok(GetBlock { data: block.into() }),
-                _ => Err(Error {
+                zebra_state::Response::Block(None) => Err(Error {
                     code: ErrorCode::ServerError(0),
                     message: "Block not found".to_string(),
                     data: None,
                 }),
+                _ => unreachable!("unmatched response to a block request"),
             }
         }
         .boxed()
