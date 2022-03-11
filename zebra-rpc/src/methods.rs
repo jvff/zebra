@@ -265,6 +265,9 @@ where
         .boxed()
     }
 
+    // TODO: Implement ReadStateService's Request::Tip.
+    //       Or use ChainTip instead of ReadStateService's Request::Tip.
+    //       (We'll need ChainTip for the tip estimate in get_blockchain_info anyway.)
     fn get_best_block_hash(&self) -> BoxFuture<Result<GetBestBlockHash>> {
         let mut state = self.state.clone();
 
