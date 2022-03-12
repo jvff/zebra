@@ -321,6 +321,7 @@ where
         args.extend_from_slice(extra_args);
 
         self.spawn_child_with_command("lightwalletd", &args)
+            .map(|child| child.bypass_test_capture(true))
     }
 
     fn with_lightwalletd_config(self, zebra_rpc_listener: SocketAddr) -> Result<Self> {
