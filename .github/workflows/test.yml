@@ -297,7 +297,7 @@ jobs:
 
       # Get the latest uploaded txt with the disk SHORT_SHA from this workflow
       - name: Download latest disk state SHORT_SHA
-        uses: dawidd6/action-download-artifact@v2.17.0
+        uses: dawidd6/action-download-artifact@v2.21.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: test.yml
